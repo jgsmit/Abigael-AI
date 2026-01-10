@@ -1,0 +1,150 @@
+{% extends 'tasks/base.html' %}
+
+{% block title %}Emotion Analytics - EmoFocus{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1><i class="fas fa-chart-line me-2"></i>Emotion Analytics</h1>
+</div>
+
+<div class="row">
+    <div class="col-md-8">
+        <!-- Emotion Distribution -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5><i class="fas fa-chart-pie me-2"></i>Emotion Distribution (Last 30 Days)</h5>
+            </div>
+            <div class="card-body">
+                {% if emotion_counts %}
+                    <div class="row">
+                        {% for emotion, count in emotion_counts.items %}
+                        <div class="col-md-3 mb-3">
+                            <div class="text-center">
+                                <div class="h4">{{ count }}</div>
+                                <span class="badge emotion-badge">
+                                    <span class="emotion-indicator emotion-{{ emotion }}"></span>
+                                    {{ emotion|title }}
+                                </span>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <p class="text-muted">No emotion data available. Start emotion detection to see your patterns!</p>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Recent Emotion Records -->
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-history me-2"></i>Recent Emotion Records</h5>
+            </div>
+            <div class="card-body">
+                {% if emotion_records %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Time</th>
+                                    <th>Emotion</th>
+                                    <th>Confidence</th>
+                                    <th>Task</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for record in emotion_records %}
+                                <tr>
+                                    <td>{{ record.timestamp|date:"M d, Y H:i" }}</td>
+                                    <td>
+                                        <span class="emotion-indicator emotion-{{ record.emotion }}"></span>
+                                        {{ record.emotion|title }}
+                                    </td>
+                                    <td>
+                                        <div class="progress" style="height: 20px;">
+                                            <div class="progress-bar" style="width: {{ record.confidence|mul:100 }}%">
+                                                {{ record.confidence|mul:100|floatformat:1 }}%
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        {% if record.task %}
+                                            <a href="{% url 'update_task' record.task.id %}" class="text-decoration-none">
+                                                {{ record.task.title }}
+                                            </a>
+                                        {% else %}
+                                            <span class="text-muted">No task</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <p class="text-muted">No emotion records available.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <!-- Task Emotion Patterns -->
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-brain me-2"></i>Your Productivity Patterns</h5>
+            </div>
+            <div class="card-body">
+                {% if patterns %}
+                    {% for pattern in patterns %}
+                    <div class="mb-3 p-3 border rounded">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <h6 class="mb-0">{{ pattern.emotion|title }}</h6>
+                            <span class="badge bg-info">{{ pattern.task_type|title }}</span>
+                        </div>
+                        <div class="small text-muted">
+                            <div>Completion Rate: {{ pattern.completion_rate|mul:100|floatformat:1 }}%</div>
+                            <div>Avg Time: {{ pattern.average_time|floatformat:0 }} min</div>
+                            <div>Sample Size: {{ pattern.sample_size }}</div>
+                        </div>
+                        <div class="progress mt-2" style="height: 8px;">
+                            <div class="progress-bar" style="width: {{ pattern.completion_rate|mul:100 }}%"></div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <p class="text-muted">
+                        <i class="fas fa-info-circle me-1"></i>
+                        Complete tasks while emotion detection is active to build your personal productivity patterns!
+                    </p>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Insights -->
+        <div class="card mt-4">
+            <div class="card-header">
+                <h5><i class="fas fa-lightbulb me-2"></i>Insights</h5>
+            </div>
+            <div class="card-body">
+                <div class="alert alert-info">
+                    <h6><i class="fas fa-info-circle me-1"></i>How This Works</h6>
+                    <p class="small mb-0">
+                        The system learns your personal productivity patterns by tracking which emotions you experience when completing different types of tasks. Over time, it will provide better recommendations based on your unique patterns.
+                    </p>
+                </div>
+                
+                <div class="alert alert-success">
+                    <h6><i class="fas fa-chart-line me-1"></i>Getting Better Results</h6>
+                    <ul class="small mb-0">
+                        <li>Keep emotion detection active while working</li>
+                        <li>Complete tasks regularly to build patterns</li>
+                        <li>Tag tasks with appropriate emotions</li>
+                        <li>Review analytics weekly to optimize your workflow</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

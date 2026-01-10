@@ -1,0 +1,581 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Life Events - {{ profile.companion_name }}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .event-card {
+            border-left: 4px solid #007bff;
+            transition: all 0.3s ease;
+        }
+        .event-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+        .preparation-badge {
+            background: linear-gradient(45deg, #28a745, #20c997);
+            color: white;
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.8rem;
+        }
+        .emotion-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 0.5rem;
+        }
+        .music-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 15px;
+        }
+        .relationship-card {
+            border-top: 3px solid #17a2b8;
+        }
+        .skill-progress {
+            height: 8px;
+            border-radius: 4px;
+            background: #e9ecef;
+            overflow: hidden;
+        }
+        .skill-progress .progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, #28a745, #20c997);
+        }
+    </style>
+</head>
+<body>
+    <div class="container-fluid py-4">
+        <div class="row">
+            <!-- Main Content -->
+            <div class="col-md-8">
+                <!-- Upcoming Events -->
+                <div class="card mb-4">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">
+                            <i class="fas fa-calendar-alt me-2"></i>Upcoming Events
+                        </h5>
+                        <button class="btn btn-primary btn-sm" onclick="showCreateEventModal()">
+                            <i class="fas fa-plus"></i> Add Event
+                        </button>
+                    </div>
+                    <div class="card-body">
+                        {% if upcoming_events %}
+                            {% for event in upcoming_events %}
+                            <div class="event-card card mb-3">
+                                <div class="card-body">
+                                    <div class="d-flex justify-content-between align-items-start">
+                                        <div>
+                                            <h6 class="card-title">
+                                                {{ event.title }}
+                                                <span class="badge bg-primary">{{ event.get_event_type_display }}</span>
+                                            </h6>
+                                            <p class="text-muted small mb-2">
+                                                <i class="fas fa-clock me-1"></i>{{ event.event_date|date:"M d, Y H:i" }}
+                                                {% if event.location %}
+                                                <i class="fas fa-map-marker-alt ms-2 me-1"></i>{{ event.location }}
+                                                {% endif %}
+                                            </p>
+                                            {% if event.description %}
+                                            <p class="card-text">{{ event.description|truncatewords:15 }}</p>
+                                            {% endif %}
+                                        </div>
+                                        <div class="text-end">
+                                            {% if event.ai_preparation_advice %}
+                                            <span class="preparation-badge">
+                                                <i class="fas fa-lightbulb me-1"></i>AI Ready
+                                            </span>
+                                            {% endif %}
+                                            <div class="mt-2">
+                                                <button class="btn btn-outline-primary btn-sm" onclick="getPreparation({{ event.id }})">
+                                                    <i class="fas fa-brain"></i> Prepare
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                        {% else %}
+                            <div class="text-center text-muted py-4">
+                                <i class="fas fa-calendar-times fa-3x mb-3"></i>
+                                <p>No upcoming events. Add one to get AI preparation assistance!</p>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Recent Events for Follow-up -->
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="mb-0">
+                            <i class="fas fa-history me-2"></i>Recent Events
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        {% if recent_events %}
+                            {% for event in recent_events %}
+                            <div class="card mb-3 border-warning">
+                                <div class="card-body">
+                                    <h6 class="card-title">{{ event.title }}</h6>
+                                    <p class="text-muted small">
+                                        <i class="fas fa-calendar me-1"></i>{{ event.event_date|date:"M d, Y H:i" }}
+                                    </p>
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <div>
+                                            <span class="emotion-indicator" style="background-color: {{ event.actual_emotion_before|default:'neutral' }}"></span>
+                                            <small>Before: {{ event.actual_emotion_before|default:"Not recorded" }}</small>
+                                            <i class="fas fa-arrow-right mx-2"></i>
+                                            <span class="emotion-indicator" style="background-color: {{ event.actual_emotion_after|default:'neutral' }}"></span>
+                                            <small>After: {{ event.actual_emotion_after|default:"Not recorded" }}</small>
+                                        </div>
+                                        <button class="btn btn-outline-info btn-sm" onclick="showFollowUpModal({{ event.id }})">
+                                            <i class="fas fa-comment-medical"></i> Follow-up
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        {% else %}
+                            <div class="text-center text-muted py-4">
+                                <i class="fas fa-comments fa-3x mb-3"></i>
+                                <p>Complete an event to get AI follow-up and insights!</p>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Music Recommendations -->
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">
+                            <i class="fas fa-music me-2"></i>Mood Music
+                        </h5>
+                        <button class="btn btn-outline-secondary btn-sm" onclick="getMusicRecommendations()">
+                            <i class="fas fa-sync"></i> Refresh
+                        </button>
+                    </div>
+                    <div class="card-body">
+                        {% if music_recommendations %}
+                            {% for music in music_recommendations %}
+                            <div class="music-card p-3 mb-3">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <h6 class="text-white mb-1">{{ music.genre }}</h6>
+                                        <p class="text-white-50 small mb-0">
+                                            {{ music.get_mood_display }} • Energy {{ music.energy_level }}/5
+                                        </p>
+                                    </div>
+                                    <div class="text-end">
+                                        <div class="btn-group btn-group-sm">
+                                            <button class="btn btn-light btn-sm" onclick="playMusic({{ music.id }})">
+                                                <i class="fas fa-play"></i>
+                                            </button>
+                                            <button class="btn btn-outline-light btn-sm" onclick="rateMusic({{ music.id }})">
+                                                <i class="fas fa-star"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="mt-2">
+                                    <small class="text-white-75">Based on: {{ music.current_emotion }} mood</small>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        {% else %}
+                            <div class="text-center py-4">
+                                <i class="fas fa-headphones fa-3x mb-3 text-muted"></i>
+                                <p class="text-muted">Get personalized music recommendations based on your mood!</p>
+                                <button class="btn btn-primary" onclick="getMusicRecommendations()">
+                                    <i class="fas fa-magic"></i> Get Recommendations
+                                </button>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sidebar -->
+            <div class="col-md-4">
+                <!-- Relationship Insights -->
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h6 class="mb-0">
+                            <i class="fas fa-heart me-2"></i>Relationship Insights
+                        </h6>
+                    </div>
+                    <div class="card-body">
+                        {% if relationship_insights %}
+                            {% for insight in relationship_insights %}
+                            <div class="relationship-card card mb-3">
+                                <div class="card-body p-3">
+                                    <h6 class="card-title small">{{ insight.person_name }}</h6>
+                                    <p class="text-muted small mb-1">
+                                        {{ insight.get_relationship_type_display }} • {{ insight.interaction_date|date:"M d" }}
+                                    </p>
+                                    {% if insight.relationship_strength_rating %}
+                                    <div class="mb-2">
+                                        <small class="text-muted">Connection Strength</small>
+                                        <div class="progress" style="height: 6px;">
+                                            <div class="progress-bar bg-info" style="width: {{ insight.relationship_strength_rating|mul:20 }}%"></div>
+                                        </div>
+                                    </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            {% endfor %}
+                        {% else %}
+                            <div class="text-center text-muted py-3">
+                                <i class="fas fa-users fa-2x mb-2"></i>
+                                <p class="small">Track your social interactions to get insights!</p>
+                            </div>
+                        {% endif %}
+                        <div class="text-center mt-3">
+                            <a href="{% url 'relationship_insights_view' %}" class="btn btn-outline-primary btn-sm">
+                                <i class="fas fa-chart-line"></i> View All
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Social Skills Development -->
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h6 class="mb-0">
+                            <i class="fas fa-graduation-cap me-2"></i>Social Skills
+                        </h6>
+                    </div>
+                    <div class="card-body">
+                        {% if social_skills %}
+                            {% for skill in social_skills %}
+                            <div class="mb-3">
+                                <div class="d-flex justify-content-between align-items-center mb-1">
+                                    <h6 class="small mb-0">{{ skill.get_skill_category_display }}</h6>
+                                    <span class="badge bg-success">Level {{ skill.current_level }}</span>
+                                </div>
+                                <div class="skill-progress">
+                                    <div class="progress-bar" style="width: {{ skill.current_level|mul:20 }}%"></div>
+                                </div>
+                                <small class="text-muted">{{ skill.practice_sessions }} practice sessions</small>
+                            </div>
+                            {% endfor %}
+                        {% else %}
+                            <div class="text-center text-muted py-3">
+                                <i class="fas fa-chart-line fa-2x mb-2"></i>
+                                <p class="small">Develop your social skills with AI guidance!</p>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Quick Actions -->
+                <div class="card">
+                    <div class="card-header">
+                        <h6 class="mb-0">
+                            <i class="fas fa-bolt me-2"></i>Quick Actions
+                        </h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="d-grid gap-2">
+                            <button class="btn btn-outline-primary btn-sm" onclick="createEvent('meeting')">
+                                <i class="fas fa-briefcase"></i> Schedule Meeting
+                            </button>
+                            <button class="btn btn-outline-danger btn-sm" onclick="createEvent('date')">
+                                <i class="fas fa-heart"></i> Plan Date
+                            </button>
+                            <button class="btn btn-outline-success btn-sm" onclick="getMusicRecommendations()">
+                                <i class="fas fa-music"></i> Mood Music
+                            </button>
+                            <button class="btn btn-outline-info btn-sm" onclick="createEvent('appointment')">
+                                <i class="fas fa-calendar-check"></i> Book Appointment
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Create Event Modal -->
+    <div class="modal fade" id="createEventModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Create Life Event</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="createEventForm">
+                        <div class="mb-3">
+                            <label class="form-label">Event Type</label>
+                            <select class="form-select" name="event_type" required>
+                                <option value="meeting">Meeting</option>
+                                <option value="date">Date</option>
+                                <option value="appointment">Appointment</option>
+                                <option value="interview">Interview</option>
+                                <option value="presentation">Presentation</option>
+                                <option value="social_event">Social Event</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Title</label>
+                            <input type="text" class="form-control" name="title" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Description</label>
+                            <textarea class="form-control" name="description" rows="3"></textarea>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Date & Time</label>
+                                <input type="datetime-local" class="form-control" name="event_date" required>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Duration (minutes)</label>
+                                <input type="number" class="form-control" name="duration_minutes" value="60">
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Location</label>
+                            <input type="text" class="form-control" name="location">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Expected Emotion</label>
+                            <select class="form-select" name="expected_emotion">
+                                <option value="neutral">Neutral</option>
+                                <option value="confident">Confident</option>
+                                <option value="nervous">Nervous</option>
+                                <option value="excited">Excited</option>
+                                <option value="calm">Calm</option>
+                            </select>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" onclick="createLifeEvent()">Create Event</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Follow-up Modal -->
+    <div class="modal fade" id="followUpModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Event Follow-up</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="followUpForm">
+                        <input type="hidden" name="event_id" id="followUpEventId">
+                        <div class="mb-3">
+                            <label class="form-label">How are you feeling now?</label>
+                            <select class="form-select" name="emotion_after" required>
+                                <option value="">Select emotion...</option>
+                                <option value="happy">Happy</option>
+                                <option value="sad">Sad</option>
+                                <option value="stressed">Stressed</option>
+                                <option value="relieved">Relieved</option>
+                                <option value="disappointed">Disappointed</option>
+                                <option value="proud">Proud</option>
+                                <option value="neutral">Neutral</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">How would you rate the outcome? (1-6)</label>
+                            <input type="range" class="form-range" name="outcome_rating" min="1" max="6" value="3">
+                            <div class="d-flex justify-content-between">
+                                <small>Poor</small>
+                                <small>Excellent</small>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">What happened? How did it go?</label>
+                            <textarea class="form-control" name="outcome_notes" rows="4" placeholder="Share your experience..."></textarea>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Any feedback for your AI companion?</label>
+                            <textarea class="form-control" name="feedback" rows="3" placeholder="How can I better support you?"></textarea>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" onclick="submitFollowUp()">Submit Follow-up</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        let currentEventId = null;
+
+        function showCreateEventModal() {
+            const modal = new bootstrap.Modal(document.getElementById('createEventModal'));
+            modal.show();
+        }
+
+        function createEvent(type) {
+            showCreateEventModal();
+            if (type) {
+                document.querySelector('select[name="event_type"]').value = type;
+            }
+        }
+
+        function createLifeEvent() {
+            const form = document.getElementById('createEventForm');
+            const formData = new FormData(form);
+            
+            const eventData = {
+                event_type: formData.get('event_type'),
+                title: formData.get('title'),
+                description: formData.get('description'),
+                event_date: formData.get('event_date'),
+                duration_minutes: formData.get('duration_minutes'),
+                location: formData.get('location'),
+                expected_emotion: formData.get('expected_emotion')
+            };
+
+            fetch('/companion/create_life_event/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken')
+                },
+                body: JSON.stringify(eventData)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    bootstrap.Modal.getInstance(document.getElementById('createEventModal')).hide();
+                    location.reload();
+                } else {
+                    alert('Error: ' + data.message);
+                }
+            });
+        }
+
+        function getPreparation(eventId) {
+            fetch(`/companion/event/${eventId}/preparation/`, {
+                method: 'GET',
+                headers: {
+                    'X-CSRFToken': getCookie('csrftoken')
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    showPreparationModal(data.preparation);
+                }
+            });
+        }
+
+        function showFollowUpModal(eventId) {
+            currentEventId = eventId;
+            document.getElementById('followUpEventId').value = eventId;
+            const modal = new bootstrap.Modal(document.getElementById('followUpModal'));
+            modal.show();
+        }
+
+        function submitFollowUp() {
+            const form = document.getElementById('followUpForm');
+            const formData = new FormData(form);
+            
+            const followupData = {
+                emotion_after: formData.get('emotion_after'),
+                outcome_rating: formData.get('outcome_rating'),
+                outcome_notes: formData.get('outcome_notes'),
+                feedback: formData.get('feedback')
+            };
+
+            fetch(`/companion/event/${currentEventId}/followup/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken')
+                },
+                body: JSON.stringify(followupData)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    bootstrap.Modal.getInstance(document.getElementById('followUpModal')).hide();
+                    showAnalysisModal(data.analysis);
+                    
+                    if (data.needs_support) {
+                        alert('I notice you might need some extra support. Would you like to talk to a human coach?');
+                    }
+                } else {
+                    alert('Error: ' + data.message);
+                }
+            });
+        }
+
+        function getMusicRecommendations() {
+            const currentEmotion = prompt('What emotion are you feeling right now?', 'neutral');
+            const activityContext = prompt('What are you doing?', 'relaxing');
+            
+            fetch('/companion/music_recommendations/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken')
+                },
+                body: JSON.stringify({
+                    current_emotion: currentEmotion,
+                    activity_context: activityContext
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    location.reload();
+                }
+            });
+        }
+
+        function showPreparationModal(preparation) {
+            // Create and show preparation modal with AI-generated content
+            alert('AI Preparation:\n\nTalking Points:\n' + preparation.talking_points.join('\n') + 
+                  '\n\nConfidence Boosters:\n' + preparation.confidence_boosters.join('\n'));
+        }
+
+        function showAnalysisModal(analysis) {
+            // Create and show analysis modal
+            let analysisText = '🧠 AI Analysis:\n\n';
+            analysisText += 'Performance Insights: ' + analysis.performance_insights + '\n\n';
+            analysisText += 'Improvement Areas:\n' + analysis.improvement_areas.join('\n') + '\n\n';
+            analysisText += 'Encouragement: ' + analysis.encouragement + '\n\n';
+            analysisText += 'Recommended Actions:\n' + analysis.recommended_actions.join('\n');
+            
+            if (analysis.music_recommendations.length > 0) {
+                analysisText += '\n\n🎵 Music Recommendations:\n' + analysis.music_recommendations.join('\n');
+            }
+            
+            alert(analysisText);
+        }
+
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+    </script>
+</body>
+</html>

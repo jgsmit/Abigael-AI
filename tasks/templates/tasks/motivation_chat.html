@@ -1,0 +1,181 @@
+{% extends 'tasks/base.html' %}
+
+{% block title %}AI Coaching - EmoFocus{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h4><i class="fas fa-robot me-2"></i>AI Empathy Coach</h4>
+            </div>
+            <div class="card-body">
+                <!-- Chat Interface -->
+                <div id="chatContainer" class="mb-3" style="height: 400px; overflow-y: auto; border: 1px solid #dee2e6; border-radius: 8px; padding: 15px; background-color: #f8f9fa;">
+                    <!-- Initial AI Message -->
+                    <div class="d-flex align-items-start mb-3">
+                        <div class="bg-primary text-white rounded-circle p-2 me-2" style="width: 40px; height: 40px; display: flex; align-items: center; justify-content: center;">
+                            <i class="fas fa-robot"></i>
+                        </div>
+                        <div class="bg-white rounded p-3 shadow-sm" style="max-width: 70%;">
+                            <div class="small text-muted mb-1">AI Coach</div>
+                            <div>{{ initial_message }}</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Message Input -->
+                <div class="input-group">
+                    <input type="text" id="messageInput" class="form-control" placeholder="Tell me how you're feeling or what you need help with...">
+                    <button class="btn btn-primary" onclick="sendMessage()">
+                        <i class="fas fa-paper-plane me-1"></i>Send
+                    </button>
+                </div>
+                
+                <!-- Quick Emotion Buttons -->
+                <div class="mt-3">
+                    <small class="text-muted">Quick responses:</small>
+                    <div class="btn-group-sm mt-2" role="group">
+                        <button class="btn btn-outline-secondary" onclick="quickResponse('I feel stressed')">Stressed</button>
+                        <button class="btn btn-outline-secondary" onclick="quickResponse('I feel focused')">Focused</button>
+                        <button class="btn btn-outline-secondary" onclick="quickResponse('I feel tired')">Tired</button>
+                        <button class="btn btn-outline-secondary" onclick="quickResponse('I feel happy')">Happy</button>
+                        <button class="btn btn-outline-secondary" onclick="quickResponse('I need motivation')">Need Motivation</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <!-- Current State -->
+        <div class="card mb-4">
+            <div class="card-body">
+                <h6 class="card-title">
+                    <i class="fas fa-heart me-2"></i>Current Emotional State
+                </h6>
+                <div class="text-center">
+                    <span class="emotion-badge">
+                        <span class="emotion-indicator emotion-{{ current_emotion }}"></span>
+                        {{ current_emotion|title }}
+                    </span>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Coaching Tips -->
+        <div class="card mb-4">
+            <div class="card-body">
+                <h6 class="card-title">
+                    <i class="fas fa-lightbulb me-2"></i>Coaching Tips
+                </h6>
+                <ul class="small">
+                    <li>Be honest about how you're feeling</li>
+                    <li>Describe specific challenges you're facing</li>
+                    <li>Ask for specific advice or motivation</li>
+                    <li>Share your progress and achievements</li>
+                </ul>
+            </div>
+        </div>
+        
+        <!-- Productivity Insights -->
+        <div class="card">
+            <div class="card-body">
+                <h6 class="card-title">
+                    <i class="fas fa-chart-line me-2"></i>Your Patterns
+                </h6>
+                <div class="small text-muted">
+                    <div class="mb-2">
+                        <strong>Most Productive Emotion:</strong>
+                        <div class="badge bg-success">Focused</div>
+                    </div>
+                    <div class="mb-2">
+                        <strong>Best Task Type:</strong>
+                        <div class="badge bg-info">Writing</div>
+                    </div>
+                    <div>
+                        <strong>Peak Hours:</strong>
+                        <div class="badge bg-warning">9-11 AM</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function sendMessage() {
+    const input = document.getElementById('messageInput');
+    const message = input.value.trim();
+    
+    if (message) {
+        // Add user message to chat
+        addMessageToChat(message, 'user');
+        input.value = '';
+        
+        // Send to AI
+        fetch('/api/motivation-chat/', {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': getCookie('csrftoken'),
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                message: message,
+                current_emotion: '{{ current_emotion }}'
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                addMessageToChat(data.response, 'ai');
+            }
+        });
+    }
+}
+
+function quickResponse(message) {
+    document.getElementById('messageInput').value = message;
+    sendMessage();
+}
+
+function addMessageToChat(message, sender) {
+    const chatContainer = document.getElementById('chatContainer');
+    const messageDiv = document.createElement('div');
+    messageDiv.className = 'd-flex align-items-start mb-3';
+    
+    if (sender === 'user') {
+        messageDiv.innerHTML = `
+            <div class="ms-auto">
+                <div class="bg-primary text-white rounded p-3 shadow-sm" style="max-width: 70%;">
+                    <div class="small text-white-50 mb-1">You</div>
+                    <div>${message}</div>
+                </div>
+            </div>
+        `;
+    } else {
+        messageDiv.innerHTML = `
+            <div class="bg-primary text-white rounded-circle p-2 me-2" style="width: 40px; height: 40px; display: flex; align-items: center; justify-content: center;">
+                <i class="fas fa-robot"></i>
+            </div>
+            <div class="bg-white rounded p-3 shadow-sm" style="max-width: 70%;">
+                <div class="small text-muted mb-1">AI Coach</div>
+                <div>${message}</div>
+            </div>
+        `;
+    }
+    
+    chatContainer.appendChild(messageDiv);
+    chatContainer.scrollTop = chatContainer.scrollHeight;
+}
+
+// Enter key to send message
+document.getElementById('messageInput').addEventListener('keypress', function(e) {
+    if (e.key === 'Enter') {
+        sendMessage();
+    }
+});
+</script>
+{% endblock %}

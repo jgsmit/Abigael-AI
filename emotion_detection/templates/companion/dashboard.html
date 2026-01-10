@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Abigael AI Companion{% endblock %}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .companion-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 2rem 0;
+        }
+        .companion-avatar {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+            margin: 0 auto 1rem;
+        }
+        .chat-container {
+            height: 500px;
+            border: 1px solid #dee2e6;
+            border-radius: 15px;
+            overflow-y: auto;
+            padding: 1rem;
+            background: #f8f9fa;
+        }
+        .message {
+            margin-bottom: 1rem;
+            max-width: 70%;
+        }
+        .message.user {
+            margin-left: auto;
+            text-align: right;
+        }
+        .message.ai {
+            text-align: left;
+        }
+        .message-bubble {
+            padding: 0.75rem 1rem;
+            border-radius: 15px;
+            display: inline-block;
+        }
+        .message.user .message-bubble {
+            background: linear-gradient(135deg, #007bff, #0056b3);
+            color: white;
+        }
+        .message.ai .message-bubble {
+            background: white;
+            border: 1px solid #dee2e6;
+        }
+        .avatar-small {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #28a745, #20c997);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.8rem;
+            color: white;
+        }
+        .typing-indicator {
+            display: inline-block;
+            padding: 0.5rem 1rem;
+            background: white;
+            border: 1px solid #dee2e6;
+            border-radius: 15px;
+        }
+        .typing-indicator span {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #6c757d;
+            margin: 0 2px;
+            animation: typing 1.4s infinite;
+        }
+        .typing-indicator span:nth-child(2) {
+            animation-delay: 0.2s;
+        }
+        .typing-indicator span:nth-child(3) {
+            animation-delay: 0.4s;
+        }
+        @keyframes typing {
+            0%, 60%, 100% {
+                transform: translateY(0);
+            }
+            30% {
+                transform: translateY(-10px);
+            }
+        }
+        .emotion-indicator {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            margin-left: 0.5rem;
+        }
+        .companion-stats {
+            background: white;
+            border-radius: 15px;
+            padding: 1.5rem;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .stat-card {
+            text-align: center;
+            padding: 1rem;
+        }
+        .stat-number {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #007bff;
+        }
+        .voice-controls {
+            background: white;
+            border-radius: 15px;
+            padding: 1.5rem;
+            margin-top: 1rem;
+        }
+        .avatar-preview {
+            width: 120px;
+            height: 120px;
+            border-radius: 15px;
+            margin: 0 auto 1rem;
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 3rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="companion-header">
+        <div class="container text-center">
+            <div class="companion-avatar">
+                <i class="fas fa-heart"></i>
+            </div>
+            <h1>{{ profile.companion_name }}</h1>
+            <p class="lead">{{ profile.get_personality_type_display }}</p>
+        </div>
+    </div>
+
+    <div class="container mt-4">
+        <div class="row">
+            <div class="col-md-8">
+                <!-- Chat Interface -->
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">Chat with {{ profile.companion_name }}</h5>
+                        <div class="d-flex align-items-center">
+                            <span class="emotion-indicator" id="currentEmotion">
+                                <i class="fas fa-smile"></i> Neutral
+                            </span>
+                            <div class="btn-group btn-group-sm">
+                                <button class="btn btn-outline-primary" onclick="startVoiceChat()">
+                                    <i class="fas fa-microphone"></i> Voice
+                                </button>
+                                <button class="btn btn-outline-success" onclick="startVideoChat()">
+                                    <i class="fas fa-video"></i> Video
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="chat-container" id="chatContainer">
+                            <!-- Messages will appear here -->
+                        </div>
+                        <div class="input-group mt-3">
+                            <input type="text" class="form-control" id="messageInput" placeholder="Type your message...">
+                            <button class="btn btn-primary" onclick="sendMessage()">
+                                <i class="fas fa-paper-plane"></i> Send
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Voice Controls -->
+                <div class="voice-controls" id="voiceControls" style="display: none;">
+                    <h6>Voice Chat Active</h6>
+                    <div class="text-center mb-3">
+                        <div class="avatar-preview">
+                            <i class="fas fa-microphone"></i>
+                        </div>
+                    </div>
+                    <div class="d-grid gap-2">
+                        <button class="btn btn-outline-danger" onclick="stopVoiceChat()">
+                            <i class="fas fa-stop"></i> End Voice Chat
+                        </button>
+                        <button class="btn btn-outline-secondary" onclick="muteUnmute()">
+                            <i class="fas fa-microphone-slash"></i> Mute
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Video Avatar -->
+                <div class="voice-controls" id="videoControls" style="display: none;">
+                    <h6>Video Avatar Active</h6>
+                    <div class="text-center mb-3">
+                        <div class="avatar-preview" id="avatarPreview">
+                            <i class="fas fa-user"></i>
+                        </div>
+                    </div>
+                    <div class="d-grid gap-2">
+                        <button class="btn btn-outline-danger" onclick="stopVideoChat()">
+                            <i class="fas fa-stop"></i> End Video Call
+                        </button>
+                        <button class="btn btn-outline-secondary" onclick="toggleVideo()">
+                            <i class="fas fa-video"></i> Toggle Video
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-4">
+                <!-- Companion Stats -->
+                <div class="companion-stats mb-4">
+                    <h6>Today's Connection</h6>
+                    <div class="row">
+                        <div class="col-4 stat-card">
+                            <div class="stat-number">{{ streak_tracker.current_streak }}</div>
+                            <small>Day Streak</small>
+                        </div>
+                        <div class="col-4 stat-card">
+                            <div class="stat-number">{{ streak_tracker.points_earned }}</div>
+                            <small>Points</small>
+                        </div>
+                        <div class="col-4 stat-card">
+                            <div class="stat-number">{{ streak_tracker.level }}</div>
+                            <small>Level</small>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Daily Companion -->
+                <div class="companion-stats mb-4">
+                    <h6>Daily Companion</h6>
+                    {% if daily_interaction.morning_greeting_sent %}
+                        <div class="alert alert-success">
+                            <i class="fas fa-sun me-2"></i>
+                            <strong>Morning Greeting</strong><br>
+                            <small>{{ daily_interaction.morning_greeting_response|truncatewords:10 }}</small>
+                        </div>
+                    {% endif %}
+                    
+                    {% if daily_interaction.evening_reflection_sent %}
+                        <div class="alert alert-info">
+                            <i class="fas fa-moon me-2"></i>
+                            <strong>Evening Reflection</strong><br>
+                            <small>{{ daily_interaction.evening_reflection_response|truncatewords:10 }}</small>
+                        </div>
+                    {% endif %}
+                    
+                    <div class="text-center">
+                        <button class="btn btn-outline-primary btn-sm" onclick="requestDailyReflection()">
+                            <i class="fas fa-heart"></i> Reflection Time
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Quick Actions -->
+                <div class="companion-stats mb-4">
+                    <h6>Quick Actions</h6>
+                    <div class="d-grid gap-2">
+                        <a href="{% url 'journal_view' %}" class="btn btn-outline-info">
+                            <i class="fas fa-book"></i> Journal
+                        </a>
+                        <a href="{% url 'coaching_view' %}" class="btn btn-outline-success">
+                            <i class="fas fa-graduation-cap"></i> Coaching
+                        </a>
+                        <a href="{% url 'human_support_view' %}" class="btn btn-outline-warning">
+                            <i class="fas fa-user-friends"></i> Human Support
+                        </a>
+                        <a href="{% url 'achievements_view' %}" class="btn btn-outline-primary">
+                            <i class="fas fa-trophy"></i> Achievements
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Recent Journal Entry -->
+                {% if recent_journals %}
+                <div class="companion-stats">
+                    <h6>Today's Journal</h6>
+                    <div class="alert alert-light">
+                        <strong>Mood:</strong> {{ recent_journals.0.primary_emotion|title }}<br>
+                        <small>{{ recent_journals.0.key_moments|truncatewords:15 }}</small>
+                        <div class="mt-2">
+                            <a href="{% url 'journal_view' %}" class="btn btn-sm btn-outline-primary">
+                                View Journal
+                            </a>
+                        </div>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        let currentConversationId = null;
+        let isVoiceChatActive = false;
+        let isVideoChatActive = false;
+        let mediaRecorder = null;
+        let audioChunks = [];
+
+        // Initialize conversation
+        function initializeConversation() {
+            fetch('/companion/start_conversation/', {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': getCookie('csrftoken'),
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    'conversation_type': 'text',
+                    'initial_emotion': 'neutral'
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    currentConversationId = data.conversation_id;
+                    addMessage('ai', "Hello! I'm {{ profile.companion_name }}. How are you feeling today?");
+                }
+            });
+        }
+
+        function sendMessage() {
+            const input = document.getElementById('messageInput');
+            const message = input.value.trim();
+            
+            if (message) {
+                addMessage('user', message);
+                input.value = '';
+                
+                // Send to backend
+                fetch('/companion/send_message/', {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': getCookie('csrftoken'),
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        'conversation_id': currentConversationId,
+                        'message': message,
+                        'message_type': 'text'
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        addMessage('ai', data.response.text);
+                        updateEmotionIndicator(data.response.emotion_detected || 'neutral');
+                    }
+                });
+            }
+        }
+
+        function addMessage(sender, content, typing = false) {
+            const chatContainer = document.getElementById('chatContainer');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${sender}`;
+            
+            if (typing) {
+                messageDiv.innerHTML = `
+                    <div class="avatar-small">
+                        <i class="fas fa-${sender === 'user' ? 'user' : 'heart'}"></i>
+                    </div>
+                    <div class="message-bubble typing-indicator">
+                        <span></span>
+                        <span></span>
+                        <span></span>
+                    </div>
+                `;
+            } else {
+                messageDiv.innerHTML = `
+                    <div class="avatar-small">
+                        <i class="fas fa-${sender === 'user' ? 'user' : 'heart'}"></i>
+                    </div>
+                    <div class="message-bubble">${content}</div>
+                `;
+            }
+            
+            chatContainer.appendChild(messageDiv);
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+            
+            // Remove typing indicator after 2 seconds
+            if (typing) {
+                setTimeout(() => {
+                    messageDiv.remove();
+                }, 2000);
+            }
+        }
+
+        function updateEmotionIndicator(emotion) {
+            const indicator = document.getElementById('currentEmotion');
+            const emotionIcons = {
+                'happy': 'fa-smile',
+                'sad': 'fa-frown',
+                'angry': 'fa-angry',
+                'stressed': 'fa-meh',
+                'calm': 'fa-smile-beam',
+                'focused': 'fa-eye',
+                'excited': 'fa-laugh',
+                'tired': 'fa-tired'
+            };
+            
+            const icon = emotionIcons[emotion] || 'fa-meh';
+            indicator.innerHTML = `<i class="fas ${icon}"></i> ${emotion.charAt(0).toUpperCase() + emotion.slice(1)}`;
+        }
+
+        // Voice Chat Functions
+        function startVoiceChat() {
+            if (isVoiceChatActive) return;
+            
+            navigator.mediaDevices.getUserMedia({ audio: true })
+                .then(stream => {
+                    mediaRecorder = new MediaRecorder(stream);
+                    mediaRecorder.start();
+                    isVoiceChatActive = true;
+                    
+                    document.getElementById('voiceControls').style.display = 'block';
+                    addMessage('ai', 'Voice chat started! I\'m listening...');
+                })
+                .catch(err => {
+                    console.error('Error accessing microphone:', err);
+                    alert('Could not access microphone. Please check permissions.');
+                });
+        }
+
+        function stopVoiceChat() {
+            if (mediaRecorder && isVoiceChatActive) {
+                mediaRecorder.stop();
+                isVoiceChatActive = false;
+                document.getElementById('voiceControls').style.display = 'none';
+                
+                addMessage('ai', 'Voice chat ended. You can continue typing or start another session.');
+            }
+        }
+
+        // Video Chat Functions
+        function startVideoChat() {
+            if (isVideoChatActive) return;
+            
+            navigator.mediaDevices.getUserMedia({ video: true, audio: true })
+                .then(stream => {
+                    isVideoChatActive = true;
+                    document.getElementById('videoControls').style.display = 'block';
+                    
+                    // Start video chat session
+                    fetch('/companion/start_conversation/', {
+                        method: 'POST',
+                        headers: {
+                            'X-CSRFToken': getCookie('csrftoken'),
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            'conversation_type': 'video',
+                            'initial_emotion': 'neutral'
+                        })
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.status === 'success') {
+                            currentConversationId = data.conversation_id;
+                            addMessage('ai', 'Video chat started! I can see you now.');
+                        }
+                    });
+                })
+                .catch(err => {
+                    console.error('Error accessing camera:', err);
+                    alert('Could not access camera. Please check permissions.');
+                });
+        }
+
+        function stopVideoChat() {
+            isVideoChatActive = false;
+            document.getElementById('videoControls').style.display = 'none';
+            
+            addMessage('ai', 'Video chat ended. It was great to see you!');
+        }
+
+        // Helper function
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let cookie of cookies) {
+                    cookie = cookie.trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeConversation();
+            
+            // Handle enter key in message input
+            document.getElementById('messageInput').addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    sendMessage();
+                }
+            });
+        });
+    </script>
+</body>
+</html>

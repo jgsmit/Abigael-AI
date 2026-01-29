@@ -79,7 +79,7 @@ def enhanced_dashboard(request):
         'goals': UserGoal.objects.filter(user=request.user, is_active=True).order_by('target_date')[:3],
     }
     
-    return render(request, 'tasks/enhanced_dashboard.html', context)
+    return render(request, 'dashboard/unified_dashboard.html', context)
 
 @login_required
 def get_rl_task_recommendations(request):

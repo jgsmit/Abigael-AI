@@ -15,28 +15,15 @@ import json
 
 @login_required
 def dashboard(request):
-    """Enhanced dashboard with multi-modal emotion detection"""
-    user_tasks = Task.objects.filter(user=request.user).exclude(status='completed')
-    
-    # Get comprehensive emotion state from all sensors
-    emotion_state = empathy_engine.get_comprehensive_emotion_state(request.user)
-    current_emotion = emotion_state.get('combined', 'neutral')
-    current_emotion_data = emotion_state
-    
-    # Get recommendations
-    recommendations = get_emotion_recommendations(current_emotion, user_tasks)
-    
-    # Get recent emotion records from all sources
-    recent_emotions = EmotionRecord.objects.filter(user=request.user).order_by('-timestamp')[:10]
-    
-    # Get task statistics
-    total_tasks = Task.objects.filter(user=request.user).count()
-    completed_tasks = Task.objects.filter(user=request.user, status='completed').count()
-    pending_tasks = Task.objects.filter(user=request.user, status='pending').count()
-    
-    # Get biofeedback data if available
-    stress_level = biofeedback_integrator.get_current_stress_level(request.user)
-    energy_level = biofeedback_integrator.get_energy_level(request.user)
+    """Unified dashboard - single entry point for all user data"""
+    # This now serves the unified dashboard template that fetches all data via API
+    return render(request, 'dashboard/unified_dashboard.html')
+
+@login_required
+def hud_dashboard(request):
+    """HUD-themed futuristic dashboard with neon effects"""
+    # Serves the HUD version with neon glows, scanlines, and sci-fi styling
+    return render(request, 'dashboard/hud_unified_dashboard.html')
     
     # Generate empathetic message
     empathetic_message = empathy_engine.generate_empathetic_message(
@@ -245,30 +232,6 @@ def motivation_chat(request):
     # Get current emotion state for initial message
     emotion_state = empathy_engine.get_comprehensive_emotion_state(request.user)
     current_emotion = emotion_state.get('combined', 'neutral')
-    
-    # Generate initial empathetic message
-    initial_message = empathy_engine.generate_empathetic_message(current_emotion)
-    
-    context = {
-        'current_emotion': current_emotion,
-        'initial_message': initial_message,
-    }
-    
-    return render(request, 'tasks/motivation_chat.html', context)
-
-# Keep existing views...
-@login_required
-def task_list(request):
-    """List all tasks with filtering options"""
-    tasks = Task.objects.filter(user=request.user)
-    
-    # Filter by status
-    status_filter = request.GET.get('status')
-    if status_filter:
-        tasks = tasks.filter(status=status_filter)
-    
-    # Filter by priority
-    priority_filter = request.GET.get('priority')
     if priority_filter:
         tasks = tasks.filter(priority=priority_filter)
     

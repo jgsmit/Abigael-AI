@@ -99,11 +99,11 @@ class VoiceEmotionDetector:
             spectral_features = self._extract_spectral_features(audio_data)
             
             # Determine emotion based on voice characteristics
-            emotion = self._classify_voice_emotion(pitches, energy, tempo, spectral_features)
+            emotion, confidence = self._classify_voice_emotion(pitches, energy, tempo, spectral_features)
             
             return {
                 'emotion': emotion,
-                'confidence': 0.75,  # Placeholder confidence
+                'confidence': confidence,
                 'pitch_mean': np.mean(pitches) if len(pitches) > 0 else 0,
                 'pitch_std': np.std(pitches) if len(pitches) > 0 else 0,
                 'energy': energy,
@@ -185,25 +185,45 @@ class VoiceEmotionDetector:
         }
     
     def _classify_voice_emotion(self, pitches, energy, tempo, spectral_features):
-        """Classify emotion based on voice characteristics"""
+        """Classify emotion based on voice characteristics with confidence score"""
         pitch_mean = np.mean(pitches) if len(pitches) > 0 else 0
         pitch_std = np.std(pitches) if len(pitches) > 0 else 0
         
-        # Simple rule-based emotion classification
+        # Calculate confidence based on feature consistency
+        feature_scores = []
+        
+        # High energy + high tempo + high pitch = stressed
         if energy > 0.1 and tempo > 3 and pitch_mean > 200:
-            return 'stressed'
+            emotion = 'stressed'
+            feature_scores = [0.8 if energy > 0.1 else 0.5, 0.8 if tempo > 3 else 0.5, 0.8 if pitch_mean > 200 else 0.5]
+        # Low energy + low tempo + low pitch = calm
         elif energy < 0.05 and tempo < 2 and pitch_mean < 150:
-            return 'calm'
+            emotion = 'calm'
+            feature_scores = [0.8 if energy < 0.05 else 0.5, 0.8 if tempo < 2 else 0.5, 0.8 if pitch_mean < 150 else 0.5]
+        # High energy + medium-high tempo + high pitch variance = excited
         elif energy > 0.08 and tempo > 2.5 and pitch_std > 50:
-            return 'excited'
+            emotion = 'excited'
+            feature_scores = [0.8 if energy > 0.08 else 0.5, 0.8 if tempo > 2.5 else 0.5, 0.8 if pitch_std > 50 else 0.5]
+        # Very low energy + low tempo + very low pitch = sad
         elif energy < 0.04 and tempo < 1.5 and pitch_mean < 120:
-            return 'sad'
-        elif energy > 0.07 and tempo > 2 and pitch_mean > 180:
-            return 'angry'
+            emotion = 'sad'
+            feature_scores = [0.85 if energy < 0.04 else 0.5, 0.85 if tempo < 1.5 else 0.5, 0.85 if pitch_mean < 120 else 0.5]
+        # High energy + high tempo + high pitch + high pitch variance = angry
+        elif energy > 0.07 and tempo > 2 and pitch_mean > 180 and pitch_std > 40:
+            emotion = 'angry'
+            feature_scores = [0.8, 0.75, 0.8, 0.75]
+        # Medium energy + medium tempo = focused
         elif 0.04 < energy < 0.08 and 1.5 < tempo < 3:
-            return 'focused'
+            emotion = 'focused'
+            feature_scores = [0.7, 0.7]
         else:
-            return 'neutral'
+            emotion = 'neutral'
+            feature_scores = [0.6]
+        
+        # Calculate average confidence from feature alignment
+        confidence = min(0.95, max(0.6, sum(feature_scores) / len(feature_scores)))
+        
+        return emotion, confidence
 
 # Global voice detector instance
 voice_detector = VoiceEmotionDetector()

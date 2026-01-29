@@ -61,8 +61,8 @@ class LifeEvent(models.Model):
     # Status
     status = models.CharField(max_length=20, choices=[
         ('scheduled', 'Scheduled'),
-        'preparing', 'Preparing'),
-        'in_progress', 'In Progress'),
+        ('preparing', 'Preparing'),
+        ('in_progress', 'In Progress'),
         ('completed', 'Completed'),
         ('cancelled', 'Cancelled')
     ], default='scheduled')

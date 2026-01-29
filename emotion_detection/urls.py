@@ -1,7 +1,8 @@
 from django.urls import path
-from . import companion_views, life_event_views
+from . import companion_views, life_event_views, api_views
 
 urlpatterns = [
+    # Companion features
     path('', companion_views.companion_dashboard, name='companion_dashboard'),
     path('start_conversation/', companion_views.start_conversation, name='start_conversation'),
     path('send_message/', companion_views.send_message, name='send_message'),
@@ -27,4 +28,13 @@ urlpatterns = [
     path('music/<int:recommendation_id>/rate/', life_event_views.rate_music_recommendation, name='rate_music_recommendation'),
     path('relationship_insights/', life_event_views.relationship_insights_view, name='relationship_insights_view'),
     path('social_skill/<int:skill_id>/update/', life_event_views.update_social_skill, name='update_social_skill'),
+    
+    # API endpoints for complete user data
+    path('api/user/profile/', api_views.user_profile_data, name='api_user_profile'),
+    path('api/user/emotions/', api_views.user_emotion_data, name='api_user_emotions'),
+    path('api/user/productivity/', api_views.user_productivity_data, name='api_user_productivity'),
+    path('api/user/engagement/', api_views.user_engagement_data, name='api_user_engagement'),
+    path('api/user/companion/', api_views.user_companion_data, name='api_user_companion'),
+    path('api/user/mental-health/', api_views.user_mental_health_data, name='api_user_mental_health'),
+    path('api/user/complete/', api_views.user_complete_profile, name='api_user_complete'),
 ]

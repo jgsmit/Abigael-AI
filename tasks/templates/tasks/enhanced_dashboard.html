@@ -8,22 +8,18 @@
         <div class="d-flex justify-content-between align-items-center mb-4">
             <h1><i class="fas fa-brain me-2"></i>Emotion-Aware Dashboard</h1>
             <div class="d-flex align-items-center">
-                <span class="me-3">Multi-Modal Detection: </span>
-                <span id="detection-status">
-                    <span class="badge bg-secondary">Inactive</span>
+                <span class="me-3">Live Data: </span>
+                <span id="data-status">
+                    <span class="badge bg-info">Loading...</span>
                 </span>
-                <button class="btn btn-sm btn-success ms-2" onclick="startMultimodalDetection()">
-                    <i class="fas fa-play"></i> Start All
-                </button>
-                <button class="btn btn-sm btn-danger ms-1" onclick="stopMultimodalDetection()">
-                    <i class="fas fa-stop"></i> Stop All
+                <button class="btn btn-sm btn-secondary ms-2" onclick="refreshDashboardData()">
+                    <i class="fas fa-sync"></i> Refresh
                 </button>
             </div>
         </div>
 
-        <!-- Comprehensive Emotion Display -->
-        {% if current_emotion %}
-        <div class="card mb-4">
+        <!-- Comprehensive Emotion Display (from API) -->
+        <div class="card mb-4" id="emotionCard" style="display:none;">
             <div class="card-body">
                 <h5 class="card-title">
                     <i class="fas fa-heart me-2"></i>Comprehensive Emotional State
@@ -31,104 +27,64 @@
                 <div class="row">
                     <div class="col-md-6">
                         <div class="d-flex align-items-center mb-2">
-                            <span id="current-emotion" class="emotion-badge">
-                                <span class="emotion-indicator emotion-{{ current_emotion }}"></span>
-                                {{ current_emotion|title }}
-                                {% if current_emotion_data.confidence %}
-                                ({{ current_emotion_data.confidence|mul:100|floatformat:1 }}%)
-                                {% endif %}
+                            <span id="current-emotion-display" class="emotion-badge">
+                                <i class="fas fa-smile"></i> Neutral
                             </span>
                         </div>
                         
                         <!-- Multi-modal emotion sources -->
-                        <div class="small text-muted">
-                            {% if current_emotion_data.facial %}
-                            <div><i class="fas fa-camera me-1"></i>Facial: {{ current_emotion_data.facial|title }}</div>
-                            {% endif %}
-                            {% if current_emotion_data.voice %}
-                            <div><i class="fas fa-microphone me-1"></i>Voice: {{ current_emotion_data.voice|title }}</div>
-                            {% endif %}
-                            {% if current_emotion_data.typing %}
-                            <div><i class="fas fa-keyboard me-1"></i>Typing: {{ current_emotion_data.typing|title }}</div>
-                            {% endif %}
+                        <div class="small text-muted" id="emotion-sources">
+                            <div><i class="fas fa-spinner fa-spin"></i> Loading emotion data...</div>
                         </div>
                     </div>
                     
                     <div class="col-md-6">
-                        <!-- Biofeedback indicators -->
-                        <div class="d-flex justify-content-between align-items-center">
-                            <div>
-                                <small class="text-muted">Stress Level</small>
-                                <div class="progress" style="height: 8px;">
-                                    <div class="progress-bar bg-danger" style="width: {{ stress_level }}%"></div>
-                                </div>
-                                <small>{{ stress_level|floatformat:0 }}%</small>
+                        <!-- Emotion trend -->
+                        <div id="emotion-trend" style="display:none;">
+                            <small class="text-muted">Last 24 Hours</small>
+                            <div class="progress" style="height: 8px;">
+                                <div id="emotion-trend-bar" class="progress-bar bg-info"></div>
                             </div>
-                            <div>
-                                <small class="text-muted">Energy Level</small>
-                                <div class="progress" style="height: 8px;">
-                                    <div class="progress-bar bg-success" style="width: {{ energy_level }}%"></div>
-                                </div>
-                                <small>{{ energy_level|floatformat:0 }}%</small>
-                            </div>
+                            <small id="emotion-trend-label">Analyzing...</small>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
-        {% endif %}
 
-        <!-- AI Empathy Message -->
-        {% if empathetic_message %}
-        <div class="card mb-4" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
+        <!-- AI Empathy Message (from API) -->
+        <div class="card mb-4" id="empathyCard" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; display:none;">
             <div class="card-body">
                 <div class="d-flex align-items-start">
                     <i class="fas fa-robot fa-2x me-3"></i>
-                    <div>
+                    <div class="flex-grow-1">
                         <h6 class="card-title mb-2">AI Empathy Assistant</h6>
-                        <p class="mb-2">{{ empathetic_message }}</p>
-                        <button class="btn btn-sm btn-light" onclick="getNewMessage()">
-                            <i class="fas fa-sync me-1"></i>Get New Message
-                        </button>
-                        <button class="btn btn-sm btn-light ms-2" onclick="suggestBreak()">
-                            <i class="fas fa-coffee me-1"></i>Suggest Break
+                        <p class="mb-2" id="empathy-message">Loading your personalized message...</p>
+                        <button class="btn btn-sm btn-light" onclick="refreshEmotionData()">
+                            <i class="fas fa-sync me-1"></i>Refresh
                         </button>
                     </div>
                 </div>
             </div>
         </div>
-        {% endif %}
 
-        <!-- Task Recommendations -->
-        {% if recommendations %}
-        <div class="card mb-4 recommendation-card">
+        <!-- Task Recommendations (from API) -->
+        <div class="card mb-4" id="recommendationsCard" style="display:none;">
             <div class="card-body">
                 <h5 class="card-title">
-                    <i class="fas fa-lightbulb me-2"></i>Recommended Tasks for {{ current_emotion|title }} Mood
+                    <i class="fas fa-lightbulb me-2"></i>Recommended Tasks
                 </h5>
-                <div class="list-group list-group-flush">
-                    {% for task in recommendations %}
-                    <div class="list-group-item bg-transparent text-white border-secondary">
-                        <div class="d-flex justify-content-between align-items-center">
-                            <div>
-                                <h6 class="mb-1">{{ task.title }}</h6>
-                                <small>{{ task.description|truncatewords:10 }}</small>
-                            </div>
-                            <div>
-                                <span class="badge bg-warning text-dark">{{ task.get_priority_display }}</span>
-                                <a href="{% url 'update_task' task.id %}" class="btn btn-sm btn-light ms-2">
-                                    Start Task
-                                </a>
-                            </div>
+                <div id="recommendations-list" class="list-group list-group-flush">
+                    <div class="text-center py-3">
+                        <div class="spinner-border spinner-border-sm" role="status">
+                            <span class="visually-hidden">Loading...</span>
                         </div>
                     </div>
-                    {% endfor %}
                 </div>
             </div>
         </div>
-        {% endif %}
 
-        <!-- Current Tasks -->
+        <!-- Current Tasks (from API) -->
         <div class="card">
             <div class="card-body">
                 <div class="d-flex justify-content-between align-items-center mb-3">
@@ -140,107 +96,74 @@
                     </a>
                 </div>
                 
-                {% if tasks %}
-                    {% for task in tasks %}
-                    <div class="card task-card priority-{{ task.priority }} mb-3">
-                        <div class="card-body">
-                            <div class="d-flex justify-content-between align-items-start">
-                                <div class="flex-grow-1">
-                                    <h6 class="card-title">{{ task.title }}</h6>
-                                    <p class="card-text text-muted">{{ task.description|truncatewords:15 }}</p>
-                                    
-                                    <!-- Emotion Tags -->
-                                    {% if task.required_emotions.all %}
-                                    <div class="mb-2">
-                                        <small class="text-muted">Requires: </small>
-                                        {% for emotion in task.required_emotions.all %}
-                                        <span class="badge bg-info">{{ emotion.name }}</span>
-                                        {% endfor %}
-                                    </div>
-                                    {% endif %}
-                                    
-                                    {% if task.preferred_emotions.all %}
-                                    <div class="mb-2">
-                                        <small class="text-muted">Preferred: </small>
-                                        {% for emotion in task.preferred_emotions.all %}
-                                        <span class="badge bg-success">{{ emotion.name }}</span>
-                                        {% endfor %}
-                                    </div>
-                                    {% endif %}
-                                </div>
-                                <div class="text-end">
-                                    <span class="badge bg-{{ task.priority == 'high' and 'danger' or task.priority == 'medium' and 'warning' or 'success' }}">
-                                        {{ task.get_priority_display }}
-                                    </span>
-                                    <div class="mt-2">
-                                        <a href="{% url 'update_task' task.id %}" class="btn btn-sm btn-outline-primary">
-                                            <i class="fas fa-edit"></i>
-                                        </a>
-                                        <a href="{% url 'delete_task' task.id %}" class="btn btn-sm btn-outline-danger">
-                                            <i class="fas fa-trash"></i>
-                                        </a>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    {% endfor %}
-                {% else %}
+                <div id="tasks-list">
                     <div class="text-center py-4">
-                        <i class="fas fa-clipboard-list fa-3x text-muted mb-3"></i>
-                        <p class="text-muted">No tasks yet. Create your first emotion-aware task!</p>
-                        <a href="{% url 'create_task' %}" class="btn btn-primary">
-                            <i class="fas fa-plus me-1"></i>Create Task
-                        </a>
+                        <div class="spinner-border spinner-border-sm" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                        <p class="mt-2 text-muted">Loading your tasks...</p>
                     </div>
-                {% endif %}
+                </div>
             </div>
         </div>
     </div>
 
     <div class="col-md-4">
-        <!-- Statistics -->
+        <!-- Statistics (from API) -->
         <div class="card stats-card mb-4">
             <div class="card-body">
                 <h5 class="card-title">
                     <i class="fas fa-chart-pie me-2"></i>Task Statistics
                 </h5>
-                <div class="row text-center">
+                <div class="row text-center" id="task-stats">
                     <div class="col-4">
-                        <div class="h4 mb-0">{{ total_tasks }}</div>
+                        <div class="h4 mb-0" id="total-tasks">-</div>
                         <small>Total</small>
                     </div>
                     <div class="col-4">
-                        <div class="h4 mb-0">{{ pending_tasks }}</div>
+                        <div class="h4 mb-0" id="pending-tasks">-</div>
                         <small>Pending</small>
                     </div>
                     <div class="col-4">
-                        <div class="h4 mb-0">{{ completed_tasks }}</div>
+                        <div class="h4 mb-0" id="completed-tasks">-</div>
                         <small>Completed</small>
+                    </div>
+                </div>
+                <div class="mt-3" id="completion-rate" style="display:none;">
+                    <small class="text-muted">Completion Rate</small>
+                    <div class="progress" style="height: 8px;">
+                        <div id="completion-bar" class="progress-bar bg-success"></div>
+                    </div>
+                    <small id="completion-percentage">0%</small>
+                </div>
+            </div>
+        </div>
+
+        <!-- Engagement & Level -->
+        <div class="card mb-4">
+            <div class="card-body">
+                <h5 class="card-title">
+                    <i class="fas fa-star me-2"></i>Your Progress
+                </h5>
+                <div id="engagement-data">
+                    <div class="spinner-border spinner-border-sm" role="status">
+                        <span class="visually-hidden">Loading...</span>
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- Recent Emotions -->
+        <!-- Recent Emotions (from API) -->
         <div class="card mb-4">
             <div class="card-body">
                 <h5 class="card-title">
                     <i class="fas fa-history me-2"></i>Recent Emotions
                 </h5>
-                {% if recent_emotions %}
-                    {% for emotion in recent_emotions %}
-                    <div class="d-flex justify-content-between align-items-center mb-2">
-                        <div>
-                            <span class="emotion-indicator emotion-{{ emotion.emotion }}"></span>
-                            <span>{{ emotion.emotion|title }}</span>
-                        </div>
-                        <small class="text-muted">{{ emotion.timestamp|date:"H:i" }}</small>
+                <div id="recent-emotions-list">
+                    <div class="spinner-border spinner-border-sm" role="status">
+                        <span class="visually-hidden">Loading...</span>
                     </div>
-                    {% endfor %}
-                {% else %}
-                    <p class="text-muted">No emotion data yet. Start emotion detection to see your patterns!</p>
-                {% endif %}
+                </div>
             </div>
         </div>
 
@@ -257,13 +180,8 @@
                     <a href="{% url 'motivation_chat' %}" class="btn btn-outline-success">
                         <i class="fas fa-comments me-1"></i>AI Coaching
                     </a>
-                    {% if biofeedback_available %}
-                    <a href="{% url 'biofeedback_settings' %}" class="btn btn-outline-info">
-                        <i class="fas fa-heartbeat me-1"></i>Biofeedback
-                    </a>
-                    {% endif %}
-                    <button class="btn btn-outline-warning" onclick="getNewMessage()">
-                        <i class="fas fa-robot me-1"></i>Get Motivation
+                    <button class="btn btn-outline-warning" onclick="refreshDashboardData()">
+                        <i class="fas fa-sync me-1"></i>Refresh All
                     </button>
                 </div>
             </div>
@@ -292,95 +210,270 @@
 
 {% block extra_js %}
 <script>
-function startMultimodalDetection() {
-    fetch('/api/start-multimodal-detection/', {
-        method: 'POST',
-        headers: {
-            'X-CSRFToken': getCookie('csrftoken'),
-            'Content-Type': 'application/json',
+    // API Service
+    class DashboardAPI {
+        static async fetchUserComplete() {
+            try {
+                const response = await fetch('/emotion_detection/api/user/complete/');
+                if (response.ok) {
+                    const data = await response.json();
+                    return data.status === 'success' ? data.data : null;
+                }
+            } catch (error) {
+                console.error('Error fetching user data:', error);
+            }
+            return null;
         }
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.status === 'success') {
-            console.log('Multi-modal detection started');
-            document.getElementById('detection-status').innerHTML = 
-                '<span class="badge bg-success">Active</span>';
-            emotionDetectionInterval = setInterval(updateComprehensiveEmotion, 3000);
-        }
-    });
-}
 
-function stopMultimodalDetection() {
-    fetch('/api/stop-multimodal-detection/', {
-        method: 'POST',
-        headers: {
-            'X-CSRFToken': getCookie('csrftoken'),
-            'Content-Type': 'application/json',
+        static async fetchTasksAnalytics() {
+            try {
+                const response = await fetch('/tasks/api/tasks/analytics/');
+                if (response.ok) {
+                    const data = await response.json();
+                    return data.status === 'success' ? data.data : null;
+                }
+            } catch (error) {
+                console.error('Error fetching task analytics:', error);
+            }
+            return null;
         }
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.status === 'success') {
-            console.log('Multi-modal detection stopped');
-            document.getElementById('detection-status').innerHTML = 
-                '<span class="badge bg-secondary">Inactive</span>';
-            clearInterval(emotionDetectionInterval);
-        }
-    });
-}
 
-function updateComprehensiveEmotion() {
-    fetch('/api/comprehensive-emotion/')
-    .then(response => response.json())
-    .then(data => {
-        if (data.status === 'success') {
-            // Update emotion display with comprehensive data
-            console.log('Comprehensive emotion updated:', data.emotion);
+        static async fetchTaskRecommendations() {
+            try {
+                const response = await fetch('/tasks/api/tasks/recommendations/');
+                if (response.ok) {
+                    const data = await response.json();
+                    return data.status === 'success' ? data.data : null;
+                }
+            } catch (error) {
+                console.error('Error fetching recommendations:', error);
+            }
+            return null;
         }
-    });
-}
 
-function getNewMessage() {
-    fetch('/api/empathetic-message/', {
-        method: 'POST',
-        headers: {
-            'X-CSRFToken': getCookie('csrftoken'),
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-            emotion: '{{ current_emotion|default:"neutral" }}'
-        })
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.status === 'success') {
-            // Update the empathy message
-            location.reload(); // Simple refresh for now
+        static async fetchAllTasks(status = null) {
+            try {
+                const url = status ? `/tasks/api/tasks/?status=${status}` : '/tasks/api/tasks/';
+                const response = await fetch(url);
+                if (response.ok) {
+                    const data = await response.json();
+                    return data.status === 'success' ? data.data : null;
+                }
+            } catch (error) {
+                console.error('Error fetching tasks:', error);
+            }
+            return null;
         }
-    });
-}
+    }
 
-function suggestBreak() {
-    fetch('/api/suggest-break/', {
-        method: 'POST',
-        headers: {
-            'X-CSRFToken': getCookie('csrftoken'),
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-            emotion: '{{ current_emotion|default:"neutral" }}'
-        })
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.status === 'success') {
-            document.getElementById('breakSuggestion').textContent = data.suggestion;
-            new bootstrap.Modal(document.getElementById('breakModal')).show();
+    // Update Dashboard
+    async function refreshDashboardData() {
+        updateDataStatus('Loading...');
+        
+        // Fetch all data in parallel
+        const [userData, analytics, recommendations, allTasks] = await Promise.all([
+            DashboardAPI.fetchUserComplete(),
+            DashboardAPI.fetchTasksAnalytics(),
+            DashboardAPI.fetchTaskRecommendations(),
+            DashboardAPI.fetchAllTasks('pending')
+        ]);
+
+        if (userData) {
+            updateEmotionDisplay(userData);
+            updateEngagementDisplay(userData);
+            updateRecentEmotions(userData);
         }
-    });
-}
 
-let emotionDetectionInterval;
+        if (analytics) {
+            updateTaskStats(analytics);
+        }
+
+        if (allTasks) {
+            updateTasksList(allTasks);
+        }
+
+        if (recommendations && recommendations.recommendations) {
+            updateRecommendations(recommendations.recommendations);
+        }
+
+        updateDataStatus('Live');
+    }
+
+    function updateDataStatus(status) {
+        const statusBadge = document.getElementById('data-status');
+        if (statusBadge) {
+            statusBadge.innerHTML = status === 'Live' 
+                ? '<span class="badge bg-success">Live</span>'
+                : '<span class="badge bg-info">Loading...</span>';
+        }
+    }
+
+    function updateEmotionDisplay(userData) {
+        const emotionCard = document.getElementById('emotionCard');
+        if (!userData.emotions || !userData.emotions.current_emotion) {
+            emotionCard.style.display = 'none';
+            return;
+        }
+
+        emotionCard.style.display = 'block';
+        const emotion = userData.emotions.current_emotion;
+        const emotionIcons = {
+            'happy': '😊', 'sad': '😢', 'angry': '😠', 'stressed': '😰',
+            'calm': '😌', 'focused': '🎯', 'excited': '🎉', 'tired': '😴'
+        };
+
+        const icon = emotionIcons[emotion.emotion] || '😐';
+        document.getElementById('current-emotion-display').innerHTML = 
+            `<i class="fas fa-heart"></i> ${icon} ${emotion.emotion.charAt(0).toUpperCase() + emotion.emotion.slice(1)}`;
+
+        // Update empathy message
+        const empathyCard = document.getElementById('empathyCard');
+        if (userData.mental_health && userData.mental_health.empathetic_message) {
+            empathyCard.style.display = 'block';
+            document.getElementById('empathy-message').textContent = userData.mental_health.empathetic_message;
+        }
+    }
+
+    function updateEngagementDisplay(userData) {
+        const engagementDiv = document.getElementById('engagement-data');
+        if (!userData.engagement) {
+            engagementDiv.innerHTML = '<p class="text-muted">No engagement data</p>';
+            return;
+        }
+
+        const eng = userData.engagement;
+        let html = `
+            <div class="row text-center">
+                <div class="col-4">
+                    <div class="h5 mb-0" style="color: #ffc107;">⭐</div>
+                    <small>Level ${eng.level || 1}</small>
+                </div>
+                <div class="col-4">
+                    <div class="h5 mb-0" style="color: #28a745;">🔥</div>
+                    <small>${eng.streaks?.current_streak || 0} Day Streak</small>
+                </div>
+                <div class="col-4">
+                    <div class="h5 mb-0" style="color: #0d6efd;">⚡</div>
+                    <small>${eng.points || 0} Points</small>
+                </div>
+            </div>
+        `;
+        if (eng.achievements && eng.achievements.length > 0) {
+            html += `<div class="mt-3"><small>🏆 ${eng.achievements.length} Achievements</small></div>`;
+        }
+        engagementDiv.innerHTML = html;
+    }
+
+    function updateRecentEmotions(userData) {
+        const emotionsList = document.getElementById('recent-emotions-list');
+        if (!userData.emotions || !userData.emotions.history_24h) {
+            emotionsList.innerHTML = '<p class="text-muted">No emotion history</p>';
+            return;
+        }
+
+        const emotionIcons = {
+            'happy': '😊', 'sad': '😢', 'angry': '😠', 'stressed': '😰',
+            'calm': '😌', 'focused': '🎯', 'excited': '🎉', 'tired': '😴'
+        };
+
+        let html = '';
+        userData.emotions.history_24h.slice(0, 5).forEach(e => {
+            const icon = emotionIcons[e.emotion] || '😐';
+            const time = new Date(e.timestamp).toLocaleTimeString();
+            html += `
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <span>${icon} ${e.emotion.charAt(0).toUpperCase() + e.emotion.slice(1)}</span>
+                    <small class="text-muted">${time}</small>
+                </div>
+            `;
+        });
+        emotionsList.innerHTML = html || '<p class="text-muted">No recent emotions</p>';
+    }
+
+    function updateTaskStats(analytics) {
+        if (!analytics.overview) return;
+
+        const overview = analytics.overview;
+        document.getElementById('total-tasks').textContent = overview.total_tasks || 0;
+        document.getElementById('pending-tasks').textContent = overview.pending_tasks || 0;
+        document.getElementById('completed-tasks').textContent = overview.completed_tasks || 0;
+
+        const rate = overview.completion_rate || 0;
+        document.getElementById('completion-rate').style.display = 'block';
+        document.getElementById('completion-bar').style.width = rate + '%';
+        document.getElementById('completion-percentage').textContent = rate.toFixed(0) + '%';
+    }
+
+    function updateTasksList(tasks) {
+        const tasksList = document.getElementById('tasks-list');
+        if (!tasks || tasks.length === 0) {
+            tasksList.innerHTML = `
+                <div class="text-center py-4">
+                    <i class="fas fa-clipboard-list fa-3x text-muted mb-3"></i>
+                    <p class="text-muted">No pending tasks. Create your first task!</p>
+                    <a href="{% url 'create_task' %}" class="btn btn-primary">
+                        <i class="fas fa-plus me-1"></i>Create Task
+                    </a>
+                </div>
+            `;
+            return;
+        }
+
+        const priorityBadges = { 'high': 'danger', 'medium': 'warning', 'low': 'success' };
+        let html = '';
+        tasks.slice(0, 5).forEach(task => {
+            const badge = priorityBadges[task.priority] || 'secondary';
+            html += `
+                <div class="card mb-2">
+                    <div class="card-body p-3">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div class="flex-grow-1">
+                                <h6 class="mb-1">${task.title}</h6>
+                                <small class="text-muted">${task.description?.substring(0, 50) || ''}</small>
+                            </div>
+                            <span class="badge bg-${badge}">${task.priority}</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+        });
+        tasksList.innerHTML = html;
+    }
+
+    function updateRecommendations(recommendations) {
+        const recCard = document.getElementById('recommendationsCard');
+        const recList = document.getElementById('recommendations-list');
+        
+        if (!recommendations || recommendations.length === 0) {
+            recCard.style.display = 'none';
+            return;
+        }
+
+        recCard.style.display = 'block';
+        let html = '';
+        recommendations.slice(0, 5).forEach((rec, idx) => {
+            html += `
+                <div class="list-group-item">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div class="flex-grow-1">
+                            <h6 class="mb-1">#${idx + 1} ${rec.task_title}</h6>
+                            <small class="text-muted">${rec.reason}</small>
+                        </div>
+                        <div class="text-end">
+                            <small class="badge bg-success">${(rec.match_score * 100).toFixed(0)}% match</small>
+                        </div>
+                    </div>
+                </div>
+            `;
+        });
+        recList.innerHTML = html;
+    }
+
+    // Initialize on load
+    document.addEventListener('DOMContentLoaded', function() {
+        refreshDashboardData();
+        // Auto-refresh every minute
+        setInterval(refreshDashboardData, 60000);
+    });
 </script>
 {% endblock %}

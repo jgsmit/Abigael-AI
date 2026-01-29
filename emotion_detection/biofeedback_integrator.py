@@ -224,10 +224,57 @@ class BiofeedbackIntegrator:
             print(f"Activity data processing error: {e}")
     
     def _sync_garmin_data(self, device):
-        """Sync data from Garmin device"""
-        # Placeholder for Garmin integration
-        # Similar structure to Fitbit but with Garmin's API
-        pass
+        """Sync data from Garmin device using Garmin Connect API"""
+        try:
+            from garminconnect import Garmin
+            
+            client = Garmin(device.auth_token)
+            
+            # Get heart rate data
+            hr_data = client.get_heart_rates(0)
+            if hr_data:
+                for reading in hr_data:
+                    BiofeedbackData.objects.update_or_create(
+                        user=device.user,
+                        device=device,
+                        metric_type='heart_rate',
+                        timestamp=reading.get('timestamp'),
+                        defaults={'value': reading.get('value', 0), 'unit': 'bpm'}
+                    )
+            
+            # Get stress data
+            stress_data = client.get_stress_data()
+            if stress_data:
+                for reading in stress_data:
+                    BiofeedbackData.objects.update_or_create(
+                        user=device.user,
+                        device=device,
+                        metric_type='stress',
+                        timestamp=reading.get('timestamp'),
+                        defaults={'value': reading.get('value', 0), 'unit': '0-100'}
+                    )
+            
+            # Get sleep data
+            sleep_data = client.get_sleep_data()
+            if sleep_data:
+                for reading in sleep_data:
+                    BiofeedbackData.objects.update_or_create(
+                        user=device.user,
+                        device=device,
+                        metric_type='sleep',
+                        timestamp=reading.get('timestamp'),
+                        defaults={'value': reading.get('duration_minutes', 0) / 60, 'unit': 'hours'}
+                    )
+            
+            device.last_sync = timezone.now()
+            device.sync_status = 'success'
+            device.save()
+            
+        except Exception as e:
+            device.sync_status = 'failed'
+            device.error_message = str(e)
+            device.save()
+            print(f"Garmin sync error: {e}")
     
     def get_current_stress_level(self, user):
         """Get current stress level from biofeedback data"""

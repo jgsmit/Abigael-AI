@@ -1,9 +1,12 @@
 from django.urls import path
 from . import views
 from . import enhanced_views
+from . import api_views
 
 urlpatterns = [
+    # Main views
     path('', enhanced_views.dashboard, name='dashboard'),
+    path('hud/', enhanced_views.hud_dashboard, name='hud_dashboard'),
     path('tasks/', enhanced_views.task_list, name='task_list'),
     path('tasks/create/', enhanced_views.create_task, name='create_task'),
     path('tasks/<int:task_id>/update/', enhanced_views.update_task, name='update_task'),
@@ -24,4 +27,10 @@ urlpatterns = [
     path('api/start-emotion-detection/', views.start_emotion_detection, name='start_emotion_detection'),
     path('api/stop-emotion-detection/', views.stop_emotion_detection, name='stop_emotion_detection'),
     path('api/current-emotion/', views.get_current_emotion, name='get_current_emotion'),
+    
+    # Comprehensive task API endpoints
+    path('api/tasks/', api_views.get_all_tasks, name='api_all_tasks'),
+    path('api/tasks/<int:task_id>/', api_views.get_task_details, name='api_task_details'),
+    path('api/tasks/analytics/', api_views.get_task_analytics, name='api_task_analytics'),
+    path('api/tasks/recommendations/', api_views.get_task_recommendations, name='api_task_recommendations'),
 ]

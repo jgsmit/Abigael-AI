@@ -20,51 +20,9 @@ import os
 
 @login_required
 def companion_dashboard(request):
-    """Main companion dashboard"""
-    user = request.user
-    
-    # Get or create companion profile
-    profile, created = CompanionProfile.objects.get_or_create(user=user)
-    
-    # Get today's interaction
-    today = timezone.now().date()
-    daily_interaction, created = DailyCompanionInteraction.objects.get_or_create(
-        user=user, date=today
-    )
-    
-    # Get recent conversations
-    recent_conversations = Conversation.objects.filter(
-        user=user
-    ).order_by('-started_at')[:5]
-    
-    # Get streak data
-    streak_tracker, created = StreakTracker.objects.get_or_create(user=user)
-    
-    # Get journal entries
-    recent_journals = JournalEntry.objects.filter(
-        user=user
-    ).order_by('-entry_date')[:7]
-    
-    # Get coaching sessions
-    coaching_sessions = LifeCoachingSession.objects.filter(
-        user=user
-    ).order_by('-session_date')[:3]
-    
-    # Get achievements
-    user_achievements = UserAchievement.objects.filter(user=user).select_related('achievement')
-    
-    context = {
-        'profile': profile,
-        'daily_interaction': daily_interaction,
-        'recent_conversations': recent_conversations,
-        'streak_tracker': streak_tracker,
-        'recent_journals': recent_journals,
-        'coaching_sessions': coaching_sessions,
-        'user_achievements': user_achievements,
-        'available_agents': HumanSupportAgent.objects.filter(is_available=True),
-    }
-    
-    return render(request, 'companion/dashboard.html', context)
+    """Unified dashboard for all user data"""
+    # Routes to the same unified dashboard template via API
+    return render(request, 'dashboard/unified_dashboard.html')
 
 @login_required
 def start_conversation(request):
@@ -747,8 +705,57 @@ def _escalate_crisis(crisis, user):
             duration_minutes=60
         )
     
-    # TODO: Implement emergency hotline integration
+    # Implement emergency hotline integration
+    if crisis.crisis_severity > 0.8:
+        _notify_emergency_contacts(user, crisis)
+        _log_emergency_incident(user, crisis)
+    
     print(f"Crisis escalated for user {user.username}: {crisis.crisis_type}")
+
+def _notify_emergency_contacts(user, crisis):
+    """Notify emergency contacts when crisis detected"""
+    from django.core.mail import send_mail
+    from emotion_detection.models import EmergencyContact
+    
+    try:
+        contacts = EmergencyContact.objects.filter(user=user, is_active=True)
+        
+        for contact in contacts:
+            email_body = f"""
+Emergency Alert: {contact.user.username} may be experiencing a crisis.
+
+Crisis Type: {crisis.crisis_type}
+Severity: {crisis.crisis_severity:.2%}
+Time: {crisis.detected_at.isoformat()}
+
+Please check on them or contact emergency services if appropriate.
+            """
+            
+            send_mail(
+                f'Emergency Alert: {user.username}',
+                email_body,
+                'noreply@abigaelai.com',
+                [contact.contact_email],
+                fail_silently=True
+            )
+    except Exception as e:
+        print(f"Error notifying emergency contacts: {e}")
+
+def _log_emergency_incident(user, crisis):
+    """Log emergency incidents for review and analytics"""
+    from emotion_detection.models import EmergencyIncidentLog
+    
+    try:
+        EmergencyIncidentLog.objects.create(
+            user=user,
+            crisis_type=crisis.crisis_type,
+            severity=crisis.crisis_severity,
+            triggered_at=crisis.detected_at,
+            action_taken='emergency_contact_notified' if crisis.crisis_severity > 0.8 else 'monitored',
+            notes=f"Auto-escalation triggered by crisis detection system"
+        )
+    except Exception as e:
+        print(f"Error logging emergency incident: {e}")
 
 def _calculate_achievement_progress(user, achievement):
     """Calculate progress towards achievement"""

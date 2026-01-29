@@ -1,0 +1,842 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HUD Dashboard - Abigael AI</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    <style>
+        /* ==================== HUD THEME ==================== */
+        
+        :root {
+            --hud-primary: #00ff88;
+            --hud-secondary: #00d4ff;
+            --hud-accent: #ff006e;
+            --hud-dark: #0a0e27;
+            --hud-darker: #050712;
+            --hud-border: 2px solid var(--hud-primary);
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        html, body {
+            margin: 0;
+            padding: 0;
+            background: var(--hud-darker);
+            color: var(--hud-primary);
+            font-family: 'Space Mono', 'Courier New', monospace;
+            overflow-x: hidden;
+        }
+
+        body {
+            background: linear-gradient(135deg, var(--hud-darker) 0%, #0f1335 100%);
+            min-height: 100vh;
+            position: relative;
+        }
+
+        /* Animated background grid */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: 
+                linear-gradient(0deg, transparent 24%, rgba(0, 255, 136, 0.05) 25%, rgba(0, 255, 136, 0.05) 26%, transparent 27%, transparent 74%, rgba(0, 255, 136, 0.05) 75%, rgba(0, 255, 136, 0.05) 76%, transparent 77%, transparent),
+                linear-gradient(90deg, transparent 24%, rgba(0, 255, 136, 0.05) 25%, rgba(0, 255, 136, 0.05) 26%, transparent 27%, transparent 74%, rgba(0, 255, 136, 0.05) 75%, rgba(0, 255, 136, 0.05) 76%, transparent 77%, transparent);
+            background-size: 50px 50px;
+            pointer-events: none;
+            z-index: 1;
+            animation: grid-move 20s linear infinite;
+        }
+
+        @keyframes grid-move {
+            0% { transform: translateY(0); }
+            100% { transform: translateY(50px); }
+        }
+
+        .main-container {
+            position: relative;
+            z-index: 2;
+            padding: 2rem 1rem;
+        }
+
+        /* ==================== HEADER ==================== */
+
+        .hud-header {
+            background: linear-gradient(90deg, rgba(0, 255, 136, 0.1) 0%, rgba(0, 212, 255, 0.1) 100%);
+            border: var(--hud-border);
+            border-bottom-width: 3px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .hud-header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--hud-primary), transparent);
+            animation: scan-line 2s infinite;
+        }
+
+        @keyframes scan-line {
+            0% { top: 0; }
+            50% { top: 50%; }
+            100% { top: 100%; }
+        }
+
+        .hud-header h1 {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 2.5rem;
+            font-weight: 900;
+            color: var(--hud-primary);
+            text-shadow: 
+                0 0 10px var(--hud-primary),
+                0 0 20px var(--hud-secondary),
+                0 0 30px rgba(0, 255, 136, 0.3);
+            margin: 0;
+            letter-spacing: 3px;
+        }
+
+        .hud-header p {
+            color: var(--hud-secondary);
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            margin: 0.5rem 0 0 0;
+            opacity: 0.8;
+        }
+
+        /* ==================== TAB NAVIGATION ==================== */
+
+        .hud-tabs {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 2rem;
+            flex-wrap: wrap;
+        }
+
+        .hud-tab-btn {
+            background: transparent;
+            border: var(--hud-border);
+            color: var(--hud-primary);
+            padding: 0.8rem 1.5rem;
+            cursor: pointer;
+            font-family: 'Space Mono', monospace;
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .hud-tab-btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: var(--hud-primary);
+            z-index: -1;
+            transition: left 0.3s ease;
+        }
+
+        .hud-tab-btn:hover::before {
+            left: 0;
+        }
+
+        .hud-tab-btn:hover {
+            color: var(--hud-darker);
+            box-shadow: 0 0 15px var(--hud-primary), inset 0 0 15px rgba(0, 255, 136, 0.2);
+        }
+
+        .hud-tab-btn.active {
+            background: var(--hud-primary);
+            color: var(--hud-darker);
+            box-shadow: 0 0 20px var(--hud-primary), inset 0 0 20px rgba(0, 255, 136, 0.4);
+            font-weight: 700;
+        }
+
+        /* ==================== CARDS ==================== */
+
+        .hud-card {
+            background: linear-gradient(135deg, rgba(0, 255, 136, 0.08) 0%, rgba(0, 212, 255, 0.08) 100%);
+            border: var(--hud-border);
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            position: relative;
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+
+        .hud-card:hover {
+            background: linear-gradient(135deg, rgba(0, 255, 136, 0.12) 0%, rgba(0, 212, 255, 0.12) 100%);
+            box-shadow: 
+                0 0 15px var(--hud-primary),
+                inset 0 0 15px rgba(0, 255, 136, 0.1);
+            transform: translateY(-2px);
+        }
+
+        .hud-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 2px;
+            background: linear-gradient(90deg, var(--hud-primary), var(--hud-secondary), transparent);
+            animation: top-glow 2s infinite;
+        }
+
+        @keyframes top-glow {
+            0%, 100% { opacity: 0.5; }
+            50% { opacity: 1; }
+        }
+
+        .hud-card-title {
+            font-family: 'Orbitron', sans-serif;
+            color: var(--hud-secondary);
+            font-size: 1.2rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            margin-bottom: 1rem;
+            text-shadow: 0 0 10px var(--hud-secondary);
+        }
+
+        .hud-card-content {
+            color: var(--hud-primary);
+            line-height: 1.6;
+        }
+
+        /* ==================== STAT CARDS ==================== */
+
+        .stat-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .stat-card {
+            background: linear-gradient(135deg, rgba(0, 212, 255, 0.1) 0%, rgba(255, 0, 110, 0.05) 100%);
+            border: 2px solid var(--hud-secondary);
+            padding: 1.5rem;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+
+        .stat-card:hover {
+            border-color: var(--hud-accent);
+            box-shadow: 
+                0 0 20px var(--hud-secondary),
+                inset 0 0 20px rgba(0, 212, 255, 0.1);
+        }
+
+        .stat-card::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            right: 0;
+            width: 2px;
+            height: 100%;
+            background: linear-gradient(180deg, var(--hud-secondary), transparent);
+            animation: right-glow 2s infinite;
+        }
+
+        @keyframes right-glow {
+            0%, 100% { opacity: 0; }
+            50% { opacity: 1; }
+        }
+
+        .stat-number {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 2.5rem;
+            font-weight: 900;
+            color: var(--hud-secondary);
+            text-shadow: 0 0 15px var(--hud-secondary);
+            margin: 1rem 0;
+        }
+
+        .stat-label {
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--hud-primary);
+            opacity: 0.8;
+        }
+
+        /* ==================== EMOTION DISPLAY ==================== */
+
+        .emotion-indicator {
+            display: inline-block;
+            font-size: 3rem;
+            margin-right: 1rem;
+            text-shadow: 0 0 20px currentColor;
+        }
+
+        .emotion-label {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.5rem;
+            text-transform: uppercase;
+            color: var(--hud-secondary);
+            text-shadow: 0 0 10px var(--hud-secondary);
+        }
+
+        /* ==================== TASK LIST ==================== */
+
+        .task-item {
+            background: rgba(0, 255, 136, 0.05);
+            border-left: 3px solid var(--hud-secondary);
+            padding: 1rem;
+            margin-bottom: 0.8rem;
+            transition: all 0.3s ease;
+        }
+
+        .task-item:hover {
+            background: rgba(0, 255, 136, 0.1);
+            border-left-color: var(--hud-primary);
+            box-shadow: inset 0 0 10px rgba(0, 255, 136, 0.1);
+        }
+
+        .task-title {
+            font-weight: 600;
+            color: var(--hud-primary);
+            margin-bottom: 0.3rem;
+        }
+
+        .task-meta {
+            font-size: 0.8rem;
+            color: var(--hud-secondary);
+            opacity: 0.7;
+        }
+
+        /* ==================== BADGE ==================== */
+
+        .hud-badge {
+            display: inline-block;
+            padding: 0.3rem 0.8rem;
+            margin: 0.2rem;
+            border: 1px solid var(--hud-primary);
+            background: transparent;
+            color: var(--hud-primary);
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            border-radius: 2px;
+            transition: all 0.3s ease;
+        }
+
+        .hud-badge:hover {
+            background: var(--hud-primary);
+            color: var(--hud-darker);
+            box-shadow: 0 0 10px var(--hud-primary);
+        }
+
+        .hud-badge.priority-high {
+            border-color: var(--hud-accent);
+            color: var(--hud-accent);
+        }
+
+        .hud-badge.priority-high:hover {
+            background: var(--hud-accent);
+            color: white;
+        }
+
+        /* ==================== SCAN EFFECT ==================== */
+
+        .scan-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 999;
+        }
+
+        .scan-line {
+            position: absolute;
+            left: 0;
+            width: 100%;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--hud-primary), transparent);
+            animation: scan 8s linear infinite;
+        }
+
+        @keyframes scan {
+            0% { top: 0%; }
+            100% { top: 100%; }
+        }
+
+        /* ==================== LOADING STATE ==================== */
+
+        .loading {
+            position: relative;
+            min-height: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .loading::after {
+            content: '';
+            width: 30px;
+            height: 30px;
+            border: 2px solid var(--hud-primary);
+            border-top-color: transparent;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* ==================== RESPONSIVE ==================== */
+
+        @media (max-width: 768px) {
+            .hud-header h1 {
+                font-size: 1.8rem;
+            }
+
+            .stat-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .stat-number {
+                font-size: 2rem;
+            }
+
+            .hud-card {
+                padding: 1rem;
+            }
+        }
+
+        /* ==================== ANIMATIONS ==================== */
+
+        .fade-in {
+            animation: fadeIn 0.6s ease-in;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .glow-pulse {
+            animation: glowPulse 2s ease-in-out infinite;
+        }
+
+        @keyframes glowPulse {
+            0%, 100% {
+                text-shadow: 0 0 10px var(--hud-primary);
+            }
+            50% {
+                text-shadow: 0 0 20px var(--hud-primary), 0 0 30px var(--hud-secondary);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="scan-overlay">
+        <div class="scan-line"></div>
+    </div>
+
+    <div class="main-container">
+        <!-- ==================== HEADER ==================== -->
+        <div class="hud-header fade-in">
+            <h1>⚡ ABIGAEL HUD SYSTEM</h1>
+            <p>📊 Real-time Emotion & Task Intelligence Dashboard</p>
+        </div>
+
+        <!-- ==================== TAB NAVIGATION ==================== -->
+        <div class="hud-tabs fade-in">
+            <button class="hud-tab-btn active" onclick="switchTab('overview')">
+                <i class="fas fa-chart-pie"></i> Overview
+            </button>
+            <button class="hud-tab-btn" onclick="switchTab('emotions')">
+                <i class="fas fa-heart"></i> Emotions
+            </button>
+            <button class="hud-tab-btn" onclick="switchTab('tasks')">
+                <i class="fas fa-tasks"></i> Tasks
+            </button>
+            <button class="hud-tab-btn" onclick="switchTab('engagement')">
+                <i class="fas fa-fire"></i> Engagement
+            </button>
+            <button class="hud-tab-btn" onclick="switchTab('health')">
+                <i class="fas fa-brain"></i> Health
+            </button>
+            <button class="hud-tab-btn" onclick="switchTab('insights')">
+                <i class="fas fa-lightbulb"></i> Insights
+            </button>
+        </div>
+
+        <!-- ==================== CONTENT SECTIONS ==================== -->
+
+        <!-- OVERVIEW TAB -->
+        <div id="overview-content" class="tab-content fade-in">
+            <div class="stat-grid" id="overview-stats">
+                <div class="stat-card">
+                    <div class="stat-label">Current Emotion</div>
+                    <div id="emotion-display" class="emotion-label">SCANNING...</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Total Tasks</div>
+                    <div class="stat-number" id="total-tasks">0</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Pending Tasks</div>
+                    <div class="stat-number" id="pending-tasks">0</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Completion Rate</div>
+                    <div class="stat-number" id="completion-rate">0%</div>
+                </div>
+            </div>
+
+            <div class="hud-card">
+                <div class="hud-card-title">🎯 Recommended Actions</div>
+                <div id="overview-recommendations" class="hud-card-content loading"></div>
+            </div>
+        </div>
+
+        <!-- EMOTIONS TAB -->
+        <div id="emotions-content" class="tab-content fade-in" style="display: none;">
+            <div class="hud-card">
+                <div class="hud-card-title">📈 Emotion Timeline</div>
+                <div id="emotions-list" class="hud-card-content loading"></div>
+            </div>
+        </div>
+
+        <!-- TASKS TAB -->
+        <div id="tasks-content" class="tab-content fade-in" style="display: none;">
+            <div class="hud-card">
+                <div class="hud-card-title">📋 Active Tasks</div>
+                <div id="tasks-list" class="hud-card-content loading"></div>
+            </div>
+        </div>
+
+        <!-- ENGAGEMENT TAB -->
+        <div id="engagement-content" class="tab-content fade-in" style="display: none;">
+            <div class="stat-grid">
+                <div class="stat-card">
+                    <div class="stat-label">Current Level</div>
+                    <div class="stat-number" id="engagement-level">0</div>
+                    <div class="stat-label">⭐</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Streak</div>
+                    <div class="stat-number" id="engagement-streak">0</div>
+                    <div class="stat-label">🔥 Days</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Points</div>
+                    <div class="stat-number" id="engagement-points">0</div>
+                    <div class="stat-label">⚡</div>
+                </div>
+            </div>
+
+            <div class="hud-card">
+                <div class="hud-card-title">🏆 Achievements</div>
+                <div id="engagement-achievements" class="hud-card-content loading"></div>
+            </div>
+        </div>
+
+        <!-- HEALTH TAB -->
+        <div id="health-content" class="tab-content fade-in" style="display: none;">
+            <div class="hud-card">
+                <div class="hud-card-title">🧠 Mental Health Status</div>
+                <div id="health-status" class="hud-card-content loading"></div>
+            </div>
+        </div>
+
+        <!-- INSIGHTS TAB -->
+        <div id="insights-content" class="tab-content fade-in" style="display: none;">
+            <div class="hud-card">
+                <div class="hud-card-title">💡 AI Insights</div>
+                <div id="insights-list" class="hud-card-content loading"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ==================== API SERVICE ====================
+        class HUDDashboardAPI {
+            static async fetchUserComplete() {
+                try {
+                    const response = await fetch('/emotion_detection/api/user/complete/');
+                    if (response.ok) {
+                        const data = await response.json();
+                        return data.status === 'success' ? data.data : null;
+                    }
+                } catch (error) {
+                    console.error('Error fetching user complete:', error);
+                }
+                return null;
+            }
+
+            static async fetchTasksAnalytics() {
+                try {
+                    const response = await fetch('/tasks/api/tasks/analytics/');
+                    if (response.ok) {
+                        const data = await response.json();
+                        return data.status === 'success' ? data.data : null;
+                    }
+                } catch (error) {
+                    console.error('Error fetching analytics:', error);
+                }
+                return null;
+            }
+
+            static async fetchTaskRecommendations() {
+                try {
+                    const response = await fetch('/tasks/api/tasks/recommendations/');
+                    if (response.ok) {
+                        const data = await response.json();
+                        return data.status === 'success' ? data.data : null;
+                    }
+                } catch (error) {
+                    console.error('Error fetching recommendations:', error);
+                }
+                return null;
+            }
+
+            static async fetchAllTasks(status = null) {
+                try {
+                    const url = status ? `/tasks/api/tasks/?status=${status}` : '/tasks/api/tasks/?limit=100';
+                    const response = await fetch(url);
+                    if (response.ok) {
+                        const data = await response.json();
+                        return data.status === 'success' ? data.data : [];
+                    }
+                } catch (error) {
+                    console.error('Error fetching tasks:', error);
+                }
+                return [];
+            }
+        }
+
+        // ==================== UI HELPERS ====================
+
+        const emotionEmojis = {
+            'happy': '😊', 'sad': '😢', 'focused': '🎯', 'stressed': '😰',
+            'calm': '😌', 'excited': '🎉', 'angry': '😠', 'tired': '😴'
+        };
+
+        function switchTab(tabName) {
+            // Hide all content
+            document.querySelectorAll('.tab-content').forEach(el => el.style.display = 'none');
+            
+            // Remove active class from all buttons
+            document.querySelectorAll('.hud-tab-btn').forEach(btn => btn.classList.remove('active'));
+            
+            // Show selected content
+            document.getElementById(tabName + '-content').style.display = 'block';
+            
+            // Add active class to clicked button
+            event.target.closest('.hud-tab-btn').classList.add('active');
+            
+            // Load data for tab
+            loadTabData(tabName);
+        }
+
+        function getEmotionEmoji(emotion) {
+            return emotionEmojis[emotion?.toLowerCase()] || '🤔';
+        }
+
+        // ==================== TAB DATA LOADERS ====================
+
+        async function loadTabData(tabName) {
+            switch(tabName) {
+                case 'overview':
+                    await loadOverviewData();
+                    break;
+                case 'emotions':
+                    await loadEmotionsData();
+                    break;
+                case 'tasks':
+                    await loadTasksData();
+                    break;
+                case 'engagement':
+                    await loadEngagementData();
+                    break;
+                case 'health':
+                    await loadHealthData();
+                    break;
+                case 'insights':
+                    await loadInsightsData();
+                    break;
+            }
+        }
+
+        async function loadOverviewData() {
+            const userData = await HUDDashboardAPI.fetchUserComplete();
+            const analytics = await HUDDashboardAPI.fetchTasksAnalytics();
+            const recommendations = await HUDDashboardAPI.fetchTaskRecommendations();
+
+            if (userData) {
+                const emotion = userData.emotions?.current_emotion?.emotion || 'neutral';
+                const emoji = getEmotionEmoji(emotion);
+                document.getElementById('emotion-display').innerHTML = `${emoji} ${emotion.toUpperCase()}`;
+                gsap.to('#emotion-display', { duration: 0.5, opacity: 1 });
+            }
+
+            if (analytics?.overview) {
+                const overview = analytics.overview;
+                document.getElementById('total-tasks').textContent = overview.total_tasks;
+                document.getElementById('pending-tasks').textContent = overview.pending_tasks;
+                document.getElementById('completion-rate').textContent = Math.round(overview.completion_rate) + '%';
+                
+                gsap.from('.stat-number', { duration: 1, opacity: 0, y: 20, stagger: 0.1 });
+            }
+
+            if (recommendations?.recommendations) {
+                const recs = recommendations.recommendations.slice(0, 3);
+                const html = recs.map(r => `
+                    <div class="task-item fade-in">
+                        <div class="task-title">📌 ${r.task_title || r.title}</div>
+                        <div class="task-meta">Match Score: ${Math.round(r.match_score * 100)}%</div>
+                        <div style="margin-top: 0.5rem;">
+                            <span class="hud-badge">${r.reason || 'Recommended'}</span>
+                        </div>
+                    </div>
+                `).join('');
+                document.getElementById('overview-recommendations').innerHTML = html || '<p>No recommendations at this time.</p>';
+            }
+        }
+
+        async function loadEmotionsData() {
+            const userData = await HUDDashboardAPI.fetchUserComplete();
+
+            if (userData?.emotions?.history) {
+                const history = userData.emotions.history.slice(0, 10);
+                const html = history.map(e => `
+                    <div class="task-item fade-in">
+                        <div class="task-title">${getEmotionEmoji(e.emotion)} ${e.emotion.toUpperCase()}</div>
+                        <div class="task-meta">${new Date(e.timestamp).toLocaleString()}</div>
+                        <div style="margin-top: 0.3rem; font-size: 0.85rem;">Intensity: ${e.intensity || 'N/A'}</div>
+                    </div>
+                `).join('');
+                document.getElementById('emotions-list').innerHTML = html || '<p>No emotion history available.</p>';
+            }
+        }
+
+        async function loadTasksData() {
+            const tasks = await HUDDashboardAPI.fetchAllTasks('pending');
+
+            if (tasks.length > 0) {
+                const html = tasks.slice(0, 15).map(t => `
+                    <div class="task-item fade-in">
+                        <div class="task-title">📌 ${t.title}</div>
+                        <div class="task-meta">Priority: ${t.priority || 'medium'} | Status: ${t.status}</div>
+                        <div style="margin-top: 0.5rem;">
+                            <span class="hud-badge ${t.priority === 'high' ? 'priority-high' : ''}">${t.priority || 'MEDIUM'}</span>
+                            <span class="hud-badge">${t.status || 'PENDING'}</span>
+                        </div>
+                    </div>
+                `).join('');
+                document.getElementById('tasks-list').innerHTML = html;
+            } else {
+                document.getElementById('tasks-list').innerHTML = '<p>No pending tasks. Great work! 🎉</p>';
+            }
+        }
+
+        async function loadEngagementData() {
+            const userData = await HUDDashboardAPI.fetchUserComplete();
+
+            if (userData?.engagement) {
+                const engagement = userData.engagement;
+                document.getElementById('engagement-level').textContent = engagement.level || 0;
+                document.getElementById('engagement-streak').textContent = engagement.streak || 0;
+                document.getElementById('engagement-points').textContent = (engagement.points || 0).toLocaleString();
+                
+                const achievements = engagement.achievements || [];
+                const html = achievements.slice(0, 5).map(a => `
+                    <div class="task-item fade-in">
+                        <div class="task-title">🏆 ${a.name || a.title}</div>
+                        <div class="task-meta">${a.description || a.earned_at}</div>
+                    </div>
+                `).join('');
+                document.getElementById('engagement-achievements').innerHTML = html || '<p>No achievements yet. Keep going! 🚀</p>';
+            }
+        }
+
+        async function loadHealthData() {
+            const userData = await HUDDashboardAPI.fetchUserComplete();
+
+            if (userData?.mental_health) {
+                const health = userData.mental_health;
+                const status = health.crisis_detected ? '🚨 CRISIS DETECTED' : health.burnout_risk ? '⚠️ BURNOUT RISK' : '✅ HEALTHY';
+                const html = `
+                    <div class="fade-in">
+                        <p><strong>Status:</strong> ${status}</p>
+                        ${health.crisis_detected ? '<p style="color: var(--hud-accent);">Crisis support resources available. Please reach out.</p>' : ''}
+                        ${health.burnout_risk ? '<p style="color: var(--hud-secondary);">Consider taking breaks and pacing yourself.</p>' : ''}
+                        <p><strong>Last Assessment:</strong> ${health.last_assessment || 'N/A'}</p>
+                    </div>
+                `;
+                document.getElementById('health-status').innerHTML = html;
+            }
+        }
+
+        async function loadInsightsData() {
+            const analytics = await HUDDashboardAPI.fetchTasksAnalytics();
+
+            if (analytics?.insights) {
+                const insights = analytics.insights || [];
+                const html = insights.map(i => `
+                    <div class="task-item fade-in">
+                        <div class="task-title">💡 ${i.title || i}</div>
+                        <div class="task-meta">${typeof i === 'object' ? i.description || i.insight : ''}</div>
+                    </div>
+                `).join('');
+                document.getElementById('insights-list').innerHTML = html || '<p>No insights available yet.</p>';
+            }
+        }
+
+        // ==================== INITIALIZATION ====================
+
+        async function initializeDashboard() {
+            await loadOverviewData();
+            
+            // Add GSAP animations to new elements
+            gsap.from('.hud-card', {
+                duration: 0.6,
+                opacity: 0,
+                y: 30,
+                stagger: 0.1
+            });
+        }
+
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeDashboard();
+            
+            // Auto-refresh every minute
+            setInterval(initializeDashboard, 60000);
+        });
+    </script>
+</body>
+</html>

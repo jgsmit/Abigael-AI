@@ -1,0 +1,683 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Abigael AI</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #667eea;
+            --secondary: #764ba2;
+            --accent: #f5576c;
+        }
+
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding-bottom: 2rem;
+        }
+
+        .dashboard-header {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            color: white;
+            padding: 2rem 0;
+            margin-bottom: 2rem;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .dashboard-header h1 {
+            font-weight: 700;
+            margin-bottom: 0;
+        }
+
+        .nav-tabs {
+            background: white;
+            border-radius: 10px 10px 0 0;
+            border-bottom: 2px solid #f0f0f0;
+        }
+
+        .nav-tabs .nav-link {
+            color: #666;
+            border: none;
+            font-weight: 600;
+            padding: 1rem 1.5rem;
+            border-bottom: 3px solid transparent;
+            transition: all 0.3s ease;
+        }
+
+        .nav-tabs .nav-link:hover {
+            color: var(--primary);
+            border-bottom-color: var(--primary);
+        }
+
+        .nav-tabs .nav-link.active {
+            color: white;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            border-bottom-color: var(--accent);
+        }
+
+        .tab-content {
+            background: white;
+            border-radius: 0 0 10px 10px;
+            padding: 2rem;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .tab-pane {
+            animation: fadeIn 0.3s ease-in;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .stat-card {
+            background: white;
+            border-radius: 10px;
+            padding: 1.5rem;
+            margin-bottom: 1rem;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+            transition: transform 0.3s ease;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .stat-number {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--primary);
+        }
+
+        .stat-label {
+            color: #999;
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .emotion-badge {
+            display: inline-block;
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            color: white;
+            font-weight: 600;
+            font-size: 1.1rem;
+        }
+
+        .recommendation-card {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+            border-radius: 10px;
+            padding: 1.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .task-item {
+            background: #f8f9fa;
+            border-left: 4px solid var(--primary);
+            padding: 1rem;
+            margin-bottom: 1rem;
+            border-radius: 5px;
+            transition: all 0.3s ease;
+        }
+
+        .task-item:hover {
+            background: #f0f0f0;
+            border-left-color: var(--accent);
+        }
+
+        .engagement-icon {
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .progress-bar {
+            background: linear-gradient(90deg, var(--primary) 0%, var(--secondary) 100%);
+        }
+
+        .crisis-alert {
+            background: #ffe5e5;
+            border-left: 4px solid #ff4444;
+            padding: 1rem;
+            border-radius: 5px;
+            margin-bottom: 1rem;
+        }
+
+        .success-badge {
+            background: #e8f5e9;
+            color: #2e7d32;
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            display: inline-block;
+            margin-right: 0.5rem;
+        }
+
+        .loading-spinner {
+            text-align: center;
+            padding: 2rem;
+        }
+
+        .spinner-border {
+            color: var(--primary);
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            border: none;
+            border-radius: 5px;
+            padding: 0.5rem 1rem;
+            font-weight: 600;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 10px rgba(102, 126, 234, 0.4);
+        }
+    </style>
+</head>
+<body>
+    <div class="dashboard-header">
+        <div class="container">
+            <h1><i class="fas fa-chart-line me-2"></i>Dashboard</h1>
+            <p class="lead mb-0">Your Complete Profile & Activity Overview</p>
+        </div>
+    </div>
+
+    <div class="container">
+        <!-- Navigation Tabs -->
+        <ul class="nav nav-tabs" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="overview-tab" data-bs-toggle="tab" data-bs-target="#overview" type="button" role="tab" aria-controls="overview" aria-selected="true">
+                    <i class="fas fa-home me-2"></i>Overview
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="emotions-tab" data-bs-toggle="tab" data-bs-target="#emotions" type="button" role="tab" aria-controls="emotions" aria-selected="false">
+                    <i class="fas fa-heart me-2"></i>Emotions
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="tasks-tab" data-bs-toggle="tab" data-bs-target="#tasks" type="button" role="tab" aria-controls="tasks" aria-selected="false">
+                    <i class="fas fa-tasks me-2"></i>Tasks
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="engagement-tab" data-bs-toggle="tab" data-bs-target="#engagement" type="button" role="tab" aria-controls="engagement" aria-selected="false">
+                    <i class="fas fa-star me-2"></i>Engagement
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="health-tab" data-bs-toggle="tab" data-bs-target="#health" type="button" role="tab" aria-controls="health" aria-selected="false">
+                    <i class="fas fa-brain me-2"></i>Mental Health
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="insights-tab" data-bs-toggle="tab" data-bs-target="#insights" type="button" role="tab" aria-controls="insights" aria-selected="false">
+                    <i class="fas fa-lightbulb me-2"></i>Insights
+                </button>
+            </li>
+        </ul>
+
+        <!-- Tab Content -->
+        <div class="tab-content">
+            <!-- OVERVIEW TAB -->
+            <div class="tab-pane fade show active" id="overview" role="tabpanel" aria-labelledby="overview-tab">
+                <div id="overview-content">
+                    <div class="loading-spinner">
+                        <div class="spinner-border" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                        <p class="mt-2 text-muted">Loading your dashboard...</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- EMOTIONS TAB -->
+            <div class="tab-pane fade" id="emotions" role="tabpanel" aria-labelledby="emotions-tab">
+                <div id="emotions-content">
+                    <div class="loading-spinner">
+                        <div class="spinner-border" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TASKS TAB -->
+            <div class="tab-pane fade" id="tasks" role="tabpanel" aria-labelledby="tasks-tab">
+                <div id="tasks-content">
+                    <div class="loading-spinner">
+                        <div class="spinner-border" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ENGAGEMENT TAB -->
+            <div class="tab-pane fade" id="engagement" role="tabpanel" aria-labelledby="engagement-tab">
+                <div id="engagement-content">
+                    <div class="loading-spinner">
+                        <div class="spinner-border" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- MENTAL HEALTH TAB -->
+            <div class="tab-pane fade" id="health" role="tabpanel" aria-labelledby="health-tab">
+                <div id="health-content">
+                    <div class="loading-spinner">
+                        <div class="spinner-border" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- INSIGHTS TAB -->
+            <div class="tab-pane fade" id="insights" role="tabpanel" aria-labelledby="insights-tab">
+                <div id="insights-content">
+                    <div class="loading-spinner">
+                        <div class="spinner-border" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Unified API Service
+        class DashboardAPI {
+            static async fetchComplete() {
+                try {
+                    const response = await fetch('/emotion_detection/api/user/complete/');
+                    if (response.ok) {
+                        const data = await response.json();
+                        return data.status === 'success' ? data.data : null;
+                    }
+                } catch (error) {
+                    console.error('Error fetching dashboard data:', error);
+                }
+                return null;
+            }
+
+            static async fetchTasksAnalytics() {
+                try {
+                    const response = await fetch('/tasks/api/tasks/analytics/');
+                    if (response.ok) {
+                        const data = await response.json();
+                        return data.status === 'success' ? data.data : null;
+                    }
+                } catch (error) {
+                    console.error('Error fetching task analytics:', error);
+                }
+                return null;
+            }
+
+            static async fetchRecommendations() {
+                try {
+                    const response = await fetch('/tasks/api/tasks/recommendations/');
+                    if (response.ok) {
+                        const data = await response.json();
+                        return data.status === 'success' ? data.data : null;
+                    }
+                } catch (error) {
+                    console.error('Error fetching recommendations:', error);
+                }
+                return null;
+            }
+        }
+
+        let globalData = null;
+
+        // Initialize Dashboard
+        async function initializeDashboard() {
+            const [complete, analytics, recommendations] = await Promise.all([
+                DashboardAPI.fetchComplete(),
+                DashboardAPI.fetchTasksAnalytics(),
+                DashboardAPI.fetchRecommendations()
+            ]);
+
+            globalData = { complete, analytics, recommendations };
+            renderOverview(complete);
+            renderEmotions(complete);
+            renderTasks(complete, analytics);
+            renderEngagement(complete);
+            renderMentalHealth(complete);
+            renderInsights(complete, analytics);
+        }
+
+        function renderOverview(data) {
+            if (!data) return;
+
+            let html = `
+                <div class="row mb-4">
+                    <div class="col-md-3">
+                        <div class="stat-card text-center">
+                            <div class="engagement-icon">😊</div>
+                            <div class="stat-number" id="current-emotion">-</div>
+                            <div class="stat-label">Current Mood</div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="stat-card text-center">
+                            <div class="engagement-icon">⭐</div>
+                            <div class="stat-number" id="current-level">-</div>
+                            <div class="stat-label">Level</div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="stat-card text-center">
+                            <div class="engagement-icon">🔥</div>
+                            <div class="stat-number" id="current-streak">-</div>
+                            <div class="stat-label">Day Streak</div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="stat-card text-center">
+                            <div class="engagement-icon">⚡</div>
+                            <div class="stat-number" id="current-points">-</div>
+                            <div class="stat-label">Points</div>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            // Current emotion
+            if (data.emotions && data.emotions.current_emotion) {
+                const emotion = data.emotions.current_emotion.emotion;
+                const icons = { 'happy': '😊', 'sad': '😢', 'angry': '😠', 'stressed': '😰', 'calm': '😌', 'focused': '🎯', 'excited': '🎉', 'tired': '😴' };
+                document.getElementById('current-emotion').textContent = `${icons[emotion] || '😐'} ${emotion.charAt(0).toUpperCase() + emotion.slice(1)}`;
+            }
+
+            // Engagement
+            if (data.engagement) {
+                document.getElementById('current-level').textContent = data.engagement.level || 1;
+                document.getElementById('current-streak').textContent = data.engagement.streaks?.current_streak || 0;
+                document.getElementById('current-points').textContent = data.engagement.points || 0;
+            }
+
+            // Crisis Alert
+            if (data.mental_health && data.mental_health.crisis_status && data.mental_health.crisis_status.in_crisis) {
+                html += `
+                    <div class="crisis-alert">
+                        <strong>⚠️ We Care About You</strong><br>
+                        We've detected that you might need support. Please reach out to a mental health professional or call a crisis helpline.
+                    </div>
+                `;
+            }
+
+            // Recent Journals
+            if (data.companion && data.companion.recent_journals && data.companion.recent_journals.length > 0) {
+                html += `
+                    <div class="stat-card">
+                        <h5><i class="fas fa-book me-2"></i>Recent Journal Entry</h5>
+                        <p class="text-muted">${data.companion.recent_journals[0].key_moments || 'No entry yet'}</p>
+                        <small>Mood: <strong>${data.companion.recent_journals[0].primary_emotion}</strong></small>
+                    </div>
+                `;
+            }
+
+            // AI Message
+            if (data.mental_health && data.mental_health.empathetic_message) {
+                html += `
+                    <div class="recommendation-card">
+                        <h6><i class="fas fa-robot me-2"></i>AI Message</h6>
+                        <p>${data.mental_health.empathetic_message}</p>
+                    </div>
+                `;
+            }
+
+            document.getElementById('overview-content').innerHTML = html;
+        }
+
+        function renderEmotions(data) {
+            if (!data || !data.emotions) return;
+
+            let html = `<h5><i class="fas fa-chart-line me-2"></i>Emotional Trends</h5>`;
+
+            if (data.emotions.current_emotion) {
+                const emotion = data.emotions.current_emotion;
+                html += `
+                    <div class="stat-card mb-3">
+                        <h6>Current State</h6>
+                        <p>Emotion: <span class="emotion-badge">${emotion.emotion.toUpperCase()}</span></p>
+                        <p>Context: ${emotion.context || 'No context'}</p>
+                    </div>
+                `;
+            }
+
+            if (data.emotions.trend_7d) {
+                html += `
+                    <div class="stat-card">
+                        <h6>7-Day Distribution</h6>
+                `;
+                const emotions = data.emotions.trend_7d;
+                for (const [emotion, count] of Object.entries(emotions)) {
+                    html += `
+                        <div class="mb-2">
+                            <small>${emotion}</small>
+                            <div class="progress" style="height: 10px;">
+                                <div class="progress-bar" style="width: ${(count / 35) * 100}%"></div>
+                            </div>
+                            <small>${count} times</small>
+                        </div>
+                    `;
+                }
+                html += `</div>`;
+            }
+
+            if (data.emotions.history_24h && data.emotions.history_24h.length > 0) {
+                html += `<h6 class="mt-4">Recent History (24h)</h6>`;
+                data.emotions.history_24h.slice(0, 10).forEach(e => {
+                    const time = new Date(e.timestamp).toLocaleTimeString();
+                    const icons = { 'happy': '😊', 'sad': '😢', 'angry': '😠', 'stressed': '😰', 'calm': '😌', 'focused': '🎯', 'excited': '🎉', 'tired': '😴' };
+                    html += `<p><small>${icons[e.emotion] || '😐'} ${e.emotion} - ${time}</small></p>`;
+                });
+            }
+
+            document.getElementById('emotions-content').innerHTML = html;
+        }
+
+        function renderTasks(data, analytics) {
+            if (!globalData.recommendations || !globalData.recommendations.recommendations) {
+                document.getElementById('tasks-content').innerHTML = '<p class="text-muted">No task data available</p>';
+                return;
+            }
+
+            let html = `
+                <div class="row mb-4">
+                    <div class="col-md-3">
+                        <div class="stat-card text-center">
+                            <div class="stat-number">${analytics?.overview?.total_tasks || 0}</div>
+                            <div class="stat-label">Total Tasks</div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="stat-card text-center">
+                            <div class="stat-number">${analytics?.overview?.pending_tasks || 0}</div>
+                            <div class="stat-label">Pending</div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="stat-card text-center">
+                            <div class="stat-number">${analytics?.overview?.completed_tasks || 0}</div>
+                            <div class="stat-label">Completed</div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="stat-card text-center">
+                            <div class="stat-number">${(analytics?.overview?.completion_rate || 0).toFixed(0)}%</div>
+                            <div class="stat-label">Completion</div>
+                        </div>
+                    </div>
+                </div>
+
+                <h5><i class="fas fa-lightbulb me-2"></i>Recommended for You</h5>
+            `;
+
+            globalData.recommendations.recommendations.slice(0, 5).forEach(rec => {
+                html += `
+                    <div class="task-item">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div class="flex-grow-1">
+                                <h6>${rec.task_title}</h6>
+                                <p class="text-muted small mb-0">${rec.reason}</p>
+                            </div>
+                            <span class="success-badge">${(rec.match_score * 100).toFixed(0)}% Match</span>
+                        </div>
+                    </div>
+                `;
+            });
+
+            html += `<a href="/tasks/" class="btn btn-primary mt-3"><i class="fas fa-tasks me-2"></i>View All Tasks</a>`;
+
+            document.getElementById('tasks-content').innerHTML = html;
+        }
+
+        function renderEngagement(data) {
+            if (!data || !data.engagement) return;
+
+            const eng = data.engagement;
+            let html = `
+                <div class="row mb-4">
+                    <div class="col-md-4">
+                        <div class="stat-card text-center">
+                            <div class="engagement-icon">⭐</div>
+                            <div class="stat-number">${eng.level || 1}</div>
+                            <div class="stat-label">Current Level</div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="stat-card text-center">
+                            <div class="engagement-icon">🔥</div>
+                            <div class="stat-number">${eng.streaks?.current_streak || 0}</div>
+                            <div class="stat-label">Day Streak</div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="stat-card text-center">
+                            <div class="engagement-icon">⚡</div>
+                            <div class="stat-number">${eng.points || 0}</div>
+                            <div class="stat-label">Total Points</div>
+                        </div>
+                    </div>
+                </div>
+
+                <h5><i class="fas fa-trophy me-2"></i>Achievements</h5>
+            `;
+
+            if (eng.achievements && eng.achievements.length > 0) {
+                html += `<div class="row">`;
+                eng.achievements.slice(0, 8).forEach(ach => {
+                    html += `
+                        <div class="col-md-3 mb-3">
+                            <div class="stat-card text-center">
+                                <div style="font-size: 2rem;">🏆</div>
+                                <small><strong>${ach.name}</strong></small><br>
+                                <small class="text-muted">${ach.description || ''}</small>
+                            </div>
+                        </div>
+                    `;
+                });
+                html += `</div>`;
+            } else {
+                html += `<p class="text-muted">Complete tasks and build streaks to earn achievements!</p>`;
+            }
+
+            document.getElementById('engagement-content').innerHTML = html;
+        }
+
+        function renderMentalHealth(data) {
+            if (!data || !data.mental_health) return;
+
+            const mh = data.mental_health;
+            let html = `<h5><i class="fas fa-heart me-2"></i>Mental Health Status</h5>`;
+
+            // Burnout Status
+            if (mh.burnout_risk) {
+                const risk = mh.burnout_risk;
+                html += `
+                    <div class="stat-card mb-3">
+                        <h6>Burnout Risk Level</h6>
+                        <div class="progress mb-2" style="height: 25px;">
+                            <div class="progress-bar" style="width: ${Math.min(risk.risk_score * 10, 100)}%">
+                                ${risk.risk_level.toUpperCase()}
+                            </div>
+                        </div>
+                        <small class="text-muted">Score: ${risk.risk_score.toFixed(1)}/10</small>
+                        ${risk.factors ? `<p class="mt-2 mb-0"><strong>Factors:</strong> ${risk.factors.join(', ')}</p>` : ''}
+                    </div>
+                `;
+            }
+
+            // Crisis Status
+            if (mh.crisis_status) {
+                const crisis = mh.crisis_status;
+                if (crisis.in_crisis) {
+                    html += `
+                        <div class="crisis-alert">
+                            <strong>⚠️ Immediate Support Recommended</strong><br>
+                            <small>Please reach out to a mental health professional or crisis helpline immediately.</small>
+                        </div>
+                    `;
+                } else {
+                    html += `<div class="success-badge">✓ No Crisis Detected</div>`;
+                }
+            }
+
+            // Support Resources
+            if (mh.support_resources) {
+                html += `
+                    <div class="stat-card mt-3">
+                        <h6>Support Resources</h6>
+                        <ul class="list-unstyled">
+                `;
+                mh.support_resources.forEach(resource => {
+                    html += `<li><i class="fas fa-phone me-2"></i>${resource}</li>`;
+                });
+                html += `</ul></div>`;
+            }
+
+            document.getElementById('health-content').innerHTML = html;
+        }
+
+        function renderInsights(data, analytics) {
+            if (!analytics || !analytics.insights) {
+                document.getElementById('insights-content').innerHTML = '<p class="text-muted">No insights available yet</p>';
+                return;
+            }
+
+            let html = `<h5><i class="fas fa-lightbulb me-2"></i>Key Insights</h5>`;
+            analytics.insights.forEach((insight, idx) => {
+                html += `
+                    <div class="stat-card">
+                        <p><strong>${idx + 1}. ${insight}</strong></p>
+                    </div>
+                `;
+            });
+
+            document.getElementById('insights-content').innerHTML = html;
+        }
+
+        // Initialize on load
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeDashboard();
+            // Auto-refresh every minute
+            setInterval(initializeDashboard, 60000);
+        });
+    </script>
+</body>
+</html>

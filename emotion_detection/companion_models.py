@@ -256,7 +256,7 @@ class HumanSupportAgent(models.Model):
     
     # Expertise
     specialties = models.JSONField(default=list)
-    languages_spoken = models.JSONField(default=list=['English'])
+    languages_spoken = models.JSONField(default=lambda: ['English'])
     
     # Contact methods
     preferred_contact_methods = models.JSONField(default=list)

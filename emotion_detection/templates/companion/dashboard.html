@@ -309,9 +309,76 @@
         let isVideoChatActive = false;
         let mediaRecorder = null;
         let audioChunks = [];
+        let userData = {};
 
-        // Initialize conversation
-        function initializeConversation() {
+        // API Service
+        class APIService {
+            static async fetchUserData() {
+                try {
+                    const response = await fetch('/emotion_detection/api/user/complete/');
+                    if (response.ok) {
+                        const result = await response.json();
+                        if (result.status === 'success') {
+                            return result.data;
+                        }
+                    }
+                    return null;
+                } catch (error) {
+                    console.error('Error fetching user data:', error);
+                    return null;
+                }
+            }
+
+            static async fetchEmotionData() {
+                try {
+                    const response = await fetch('/emotion_detection/api/user/emotions/');
+                    if (response.ok) {
+                        const result = await response.json();
+                        if (result.status === 'success') {
+                            return result.data;
+                        }
+                    }
+                    return null;
+                } catch (error) {
+                    console.error('Error fetching emotion data:', error);
+                    return null;
+                }
+            }
+
+            static async sendMessage(conversationId, message) {
+                try {
+                    const response = await fetch('/companion/send_message/', {
+                        method: 'POST',
+                        headers: {
+                            'X-CSRFToken': getCookie('csrftoken'),
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            'conversation_id': conversationId,
+                            'message': message,
+                            'message_type': 'text'
+                        })
+                    });
+                    if (response.ok) {
+                        return await response.json();
+                    }
+                    return null;
+                } catch (error) {
+                    console.error('Error sending message:', error);
+                    return null;
+                }
+            }
+        }
+
+        // Initialize with API data
+        async function initializeConversation() {
+            // Fetch complete user data
+            userData = await APIService.fetchUserData();
+            if (userData) {
+                updateDashboardWithData(userData);
+            }
+
+            // Start companion conversation
             fetch('/companion/start_conversation/', {
                 method: 'POST',
                 headers: {
@@ -320,16 +387,47 @@
                 },
                 body: JSON.stringify({
                     'conversation_type': 'text',
-                    'initial_emotion': 'neutral'
+                    'initial_emotion': userData?.profile?.companion_personality || 'neutral'
                 })
             })
             .then(response => response.json())
             .then(data => {
                 if (data.status === 'success') {
                     currentConversationId = data.conversation_id;
-                    addMessage('ai', "Hello! I'm {{ profile.companion_name }}. How are you feeling today?");
+                    const companionName = userData?.profile?.companion_name || 'Companion';
+                    addMessage('ai', `Hello! I'm ${companionName}. How are you feeling today?`);
                 }
             });
+
+            // Refresh emotion data every 30 seconds
+            setInterval(async () => {
+                const emotionData = await APIService.fetchEmotionData();
+                if (emotionData && emotionData.current_emotion) {
+                    updateEmotionIndicator(emotionData.current_emotion.emotion);
+                }
+            }, 30000);
+        }
+
+        function updateDashboardWithData(data) {
+            // Update streak and stats
+            if (data.engagement && document.querySelector('[id="strackValue"]')) {
+                const streakValue = data.engagement.streaks?.current_streak || 0;
+                const pointsValue = data.engagement.points || 0;
+                const levelValue = data.engagement.level || 1;
+                document.querySelector('[id="streakValue"]').textContent = streakValue;
+                document.querySelector('[id="pointsValue"]').textContent = pointsValue;
+                document.querySelector('[id="levelValue"]').textContent = levelValue;
+            }
+
+            // Update emotion indicator
+            if (data.emotions && data.emotions.current_emotion) {
+                updateEmotionIndicator(data.emotions.current_emotion.emotion);
+            }
+
+            // Update mental health status if in crisis
+            if (data.mental_health && data.mental_health.crisis_status && data.mental_health.crisis_status.in_crisis) {
+                showCrisisAlert(data.mental_health.crisis_status);
+            }
         }
 
         function sendMessage() {
@@ -339,27 +437,25 @@
             if (message) {
                 addMessage('user', message);
                 input.value = '';
+                addMessage('ai', null, true); // Show typing indicator
                 
                 // Send to backend
-                fetch('/companion/send_message/', {
-                    method: 'POST',
-                    headers: {
-                        'X-CSRFToken': getCookie('csrftoken'),
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        'conversation_id': currentConversationId,
-                        'message': message,
-                        'message_type': 'text'
-                    })
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.status === 'success') {
-                        addMessage('ai', data.response.text);
-                        updateEmotionIndicator(data.response.emotion_detected || 'neutral');
-                    }
-                });
+                APIService.sendMessage(currentConversationId, message)
+                    .then(data => {
+                        if (data && data.status === 'success') {
+                            addMessage('ai', data.response.text);
+                            updateEmotionIndicator(data.response.emotion_detected || 'neutral');
+                            
+                            // Update user data after message
+                            setTimeout(() => {
+                                APIService.fetchUserData().then(newData => {
+                                    if (newData) {
+                                        userData = newData;
+                                    }
+                                });
+                            }, 1000);
+                        }
+                    });
             }
         }
 
@@ -445,6 +541,19 @@
             }
         }
 
+        function muteUnmute() {
+            const btn = event.target.closest('button');
+            if (isVoiceChatActive && mediaRecorder) {
+                if (mediaRecorder.state === 'recording') {
+                    mediaRecorder.pause();
+                    btn.innerHTML = '<i class="fas fa-microphone"></i> Unmute';
+                } else {
+                    mediaRecorder.resume();
+                    btn.innerHTML = '<i class="fas fa-microphone-slash"></i> Mute';
+                }
+            }
+        }
+
         // Video Chat Functions
         function startVideoChat() {
             if (isVideoChatActive) return;
@@ -485,6 +594,34 @@
             document.getElementById('videoControls').style.display = 'none';
             
             addMessage('ai', 'Video chat ended. It was great to see you!');
+        }
+
+        function toggleVideo() {
+            const btn = event.target.closest('button');
+            if (isVideoChatActive) {
+                // Toggle camera on/off
+                btn.classList.toggle('btn-outline-danger');
+                btn.classList.toggle('btn-outline-secondary');
+            }
+        }
+
+        function showCrisisAlert(crisisStatus) {
+            const alertHtml = `
+                <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    <strong>Support Needed</strong><br>
+                    We detected signs that you might need support. 
+                    <a href="/companion/human_support/" class="alert-link">Contact a human specialist</a> or 
+                    <a href="/companion/crisis_resources/" class="alert-link">view crisis resources</a>.
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            `;
+            const container = document.querySelector('.container');
+            if (container) {
+                const alertDiv = document.createElement('div');
+                alertDiv.innerHTML = alertHtml;
+                container.insertBefore(alertDiv.firstElementChild, container.firstChild);
+            }
         }
 
         // Helper function

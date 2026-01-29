@@ -96,4 +96,9 @@ urllib3==2.5.0
 wcwidth==0.2.14
 webcolors==25.10.0
 webencodings==0.5.1
-websocket-client==1.9.0
+websocket-client==1.9.0cryptography==44.1.0
+pydantic==2.10.2
+tensorflow==2.15.1
+keras==3.3.0
+numpy==1.26.4
+scipy==1.14.1

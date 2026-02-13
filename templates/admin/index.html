@@ -1,0 +1,17 @@
+{% extends 'admin/base_site.html' %}
+
+{% block content %}
+<div class="container">
+  <h1>Admin Quick Links</h1>
+  <div class="card mb-3">
+    <div class="card-body">
+      <ul>
+        <li><a href="{% url 'admin_insight_exports' %}">Insight Exports</a> — manage generated insight reports</li>
+        <li><a href="{% url 'admin:emotion_detection_insight_changelist' %}">Insights (Admin)</a> — view insights records</li>
+      </ul>
+    </div>
+  </div>
+
+  <p class="text-muted">Use the links above for quick access to export management and insight records.</p>
+</div>
+{% endblock %}

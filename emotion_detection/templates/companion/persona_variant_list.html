@@ -1,0 +1,23 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<h1>Persona Variants</h1>
+{% if persona_id %}
+  <p><a href="{% url 'persona_variant_create_for_persona' persona_id %}">Create variant for persona</a></p>
+{% else %}
+  <p><a href="{% url 'persona_variant_create' %}">Create new variant</a></p>
+{% endif %}
+
+<ul>
+  {% for v in variants %}
+    <li>
+      <strong>{{ v.persona.name }} - {{ v.name }}</strong>
+      &nbsp; <a href="{% url 'persona_variant_edit' v.id %}">Edit</a>
+      <div>{{ v.description }}</div>
+    </li>
+  {% empty %}
+    <li>No variants yet.</li>
+  {% endfor %}
+</ul>
+
+{% endblock %}

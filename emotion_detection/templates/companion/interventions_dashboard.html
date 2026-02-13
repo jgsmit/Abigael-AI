@@ -1,0 +1,92 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<h1>Interventions & Nudges</h1>
+
+<!-- Engagement Stats -->
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 20px;">
+  <div style="background: #f0f8ff; padding: 12px; border-radius: 4px; border-left: 4px solid #0066cc;">
+    <div style="font-size: 0.9em; color: #666;">Triggered This Week</div>
+    <div style="font-size: 1.8em; font-weight: bold;">{{ stats.total_triggered|default:0 }}</div>
+  </div>
+  <div style="background: #f0fff0; padding: 12px; border-radius: 4px; border-left: 4px solid #00aa00;">
+    <div style="font-size: 0.9em; color: #666;">Completed</div>
+    <div style="font-size: 1.8em; font-weight: bold;">{{ stats.completed|default:0 }}</div>
+  </div>
+  <div style="background: #fff0f0; padding: 12px; border-radius: 4px; border-left: 4px solid #cc0000;">
+    <div style="font-size: 0.9em; color: #666;">Completion Rate</div>
+    <div style="font-size: 1.8em; font-weight: bold;">{{ stats.completed_rate|default:0|floatformat:0 }}%</div>
+  </div>
+  <div style="background: #fffef0; padding: 12px; border-radius: 4px; border-left: 4px solid #ffaa00;">
+    <div style="font-size: 0.9em; color: #666;">Avg Rating</div>
+    <div style="font-size: 1.8em; font-weight: bold;">{{ stats.avg_rating|default:0|floatformat:1 }}/5</div>
+  </div>
+</div>
+
+<!-- Pending Interventions -->
+<div style="margin-bottom: 24px;">
+  <h2>Recommended For You</h2>
+  {% if pending %}
+    <div style="display: grid; gap: 12px;">
+      {% for intervention in pending %}
+        <div style="background: white; border: 1px solid #ddd; padding: 12px; border-radius: 4px; border-left: 4px solid #0066cc;">
+          <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+            <div>
+              <h3 style="margin: 0 0 6px 0;">{{ intervention.rule.name }}</h3>
+              <p style="margin: 0; color: #666; font-size: 0.9em;">{{ intervention.rule.get_intervention_type_display }}</p>
+              {% if intervention.content %}
+                <p style="margin: 6px 0 0 0; font-weight: 500;">{{ intervention.content.title }}</p>
+              {% endif %}
+            </div>
+            <div>
+              <span style="background: #e0e0e0; padding: 4px 8px; border-radius: 3px; font-size: 0.85em;">
+                {% if intervention.content %}
+                  ⏱ {{ intervention.content.duration_seconds|add:30|divisibleby:60|yesno:""|add:' min' }}
+                {% endif %}
+              </span>
+            </div>
+          </div>
+          <div style="margin-top: 12px; display: flex; gap: 8px;">
+            <a href="{% url 'intervention_detail' intervention.id %}" style="background: #0066cc; color: white; padding: 8px 16px; border-radius: 3px; text-decoration: none;">View & Start</a>
+            <form method="post" action="{% url 'dismiss_intervention' intervention.id %}" style="display: inline;">
+              {% csrf_token %}
+              <button type="submit" style="background: #f0f0f0; padding: 8px 16px; border-radius: 3px; border: none; cursor: pointer;">Dismiss</button>
+            </form>
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+  {% else %}
+    <p>No pending interventions. Great job! 🎉</p>
+  {% endif %}
+</div>
+
+<!-- Recent Completed -->
+<div>
+  <h2>Recently Completed</h2>
+  {% if recent %}
+    <ul style="list-style: none; padding: 0;">
+      {% for intervention in recent %}
+        <li style="padding: 8px 0; border-bottom: 1px solid #f0f0f0; display: flex; justify-content: space-between; align-items: center;">
+          <div>
+            <strong>{{ intervention.rule.name }}</strong> — {{ intervention.completed_at|date:'M d, H:i' }}
+            {% if intervention.user_rating %}
+              <span style="color: #ffaa00;">⭐ {{ intervention.user_rating }}/5</span>
+            {% endif %}
+          </div>
+          <div>
+            {% if intervention.was_helpful %}
+              <span style="color: green;">✓ Helpful</span>
+            {% elif intervention.was_helpful == False %}
+              <span style="color: red;">✗ Not helpful</span>
+            {% endif %}
+          </div>
+        </li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <p>No completed interventions yet.</p>
+  {% endif %}
+</div>
+
+{% endblock %}

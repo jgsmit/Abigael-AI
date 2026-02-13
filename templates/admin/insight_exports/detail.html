@@ -1,0 +1,16 @@
+{% extends 'admin/base_site.html' %}
+
+{% block content %}
+<h1>Insight Export {{ export.id }}</h1>
+<p><strong>User:</strong> {{ export.user.username }}</p>
+<p><strong>Title:</strong> {{ export.title }}</p>
+<p><strong>Format:</strong> {{ export.get_export_format_display }}</p>
+<p><strong>Created:</strong> {{ export.created_at }}</p>
+<p><strong>File:</strong> {% if export.file_url %}<a href="{{ export.file_url }}">Download</a>{% else %}Not yet generated{% endif %}</p>
+
+<p>
+  <a class="button" href="{% url 'admin_insight_export_regenerate' export.id %}">Regenerate</a>
+  <a class="button" href="{% url 'admin_insight_exports' %}">Back to list</a>
+</p>
+
+{% endblock %}

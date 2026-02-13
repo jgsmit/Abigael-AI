@@ -41,9 +41,50 @@ class CompanionProfile(models.Model):
     
     # Companion name
     companion_name = models.CharField(max_length=50, default='Abigael')
+    # Selected persona (optional template the companion follows)
+    selected_persona = models.ForeignKey('Persona', null=True, blank=True, on_delete=models.SET_NULL)
+    # Selected persona variant (optional finer-grained override)
+    selected_persona_variant = models.ForeignKey('PersonaVariant', null=True, blank=True, on_delete=models.SET_NULL)
     
     def __str__(self):
         return f"{self.user.username}'s {self.companion_name}"
+
+
+class Persona(models.Model):
+    """Reusable persona templates that define tone, traits and defaults."""
+    name = models.CharField(max_length=100)
+    description = models.TextField(blank=True)
+
+    # Core trait set and defaults (tone, voice, behavior flags)
+    traits = models.JSONField(default=dict)
+    default_tone = models.CharField(max_length=30, default='casual')
+    default_voice = models.CharField(max_length=50, default='friendly_warm')
+
+    # Visibility and authoring
+    is_public = models.BooleanField(default=False)
+    created_by = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL, related_name='created_personas')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return self.name
+
+
+class PersonaVariant(models.Model):
+    """Variants that inherit from a Persona and apply overrides."""
+    persona = models.ForeignKey(Persona, on_delete=models.CASCADE, related_name='variants')
+    name = models.CharField(max_length=100)
+    description = models.TextField(blank=True)
+    overrides = models.JSONField(default=dict)  # trait overrides, e.g. tone/phrasing
+    is_active = models.BooleanField(default=True)
+
+    def merged_traits(self):
+        base = dict(self.persona.traits or {})
+        base.update(self.overrides or {})
+        return base
+
+    def __str__(self):
+        return f"{self.persona.name} - {self.name}"
 
 class Conversation(models.Model):
     """Chat and voice conversation logs"""
@@ -112,13 +153,17 @@ class JournalEntry(models.Model):
         ('automatic', 'Automatic'),
         ('manual', 'Manual'),
         ('reflection', 'Reflection'),
-        ('milestone', 'Milestone')
-    ])
+        ('milestone', 'Milestone'),
+        ('voice_note', 'Voice Note'),
+        ('photo_entry', 'Photo Entry')
+    ], default='manual')
     
     # Emotional data
     primary_emotion = models.CharField(max_length=20)
     emotion_intensity = models.FloatField(default=0.0)  # 0-1 scale
     emotion_notes = models.TextField(blank=True)
+    # Secondary emotions (JSON list of {emotion, intensity})
+    secondary_emotions = models.JSONField(default=list)
     
     # Life events
     life_events = models.JSONField(default=list)
@@ -136,8 +181,28 @@ class JournalEntry(models.Model):
     pattern_recognition = models.JSONField(default=dict)
     recommendations = models.JSONField(default=list)
     
+    # Multimodal support
+    voice_transcript = models.TextField(blank=True)  # text from voice entry
+    voice_duration_seconds = models.IntegerField(null=True, blank=True)
+    has_audio = models.BooleanField(default=False)
+    has_images = models.BooleanField(default=False)
+    has_video = models.BooleanField(default=False)
+    
+    # Searchable tags
+    tags = models.JSONField(default=list)  # user-defined tags
+    auto_tags = models.JSONField(default=list)  # AI-generated tags
+    
+    # Visibility and sharing
+    is_private = models.BooleanField(default=True)
+    shared_with = models.JSONField(default=list)  # list of user IDs
+    
     class Meta:
         unique_together = ['user', 'entry_date']
+        indexes = [
+            models.Index(fields=['user', '-entry_date']),
+            models.Index(fields=['user', 'primary_emotion']),
+            models.Index(fields=['user', 'entry_type']),
+        ]
     
     def __str__(self):
         return f"{self.user.username} - Journal {self.entry_date}"
@@ -361,3 +426,48 @@ class DailyCompanionInteraction(models.Model):
     
     def __str__(self):
         return f"{self.user.username} - Daily companion {self.date}"
+
+class JournalMedia(models.Model):
+    """Media attachments for journal entries (images, video, voice files)"""
+    journal_entry = models.ForeignKey(JournalEntry, on_delete=models.CASCADE, related_name='media')
+    media_type = models.CharField(max_length=10, choices=[
+        ('image', 'Image'),
+        ('audio', 'Audio'),
+        ('video', 'Video')
+    ])
+    file = models.FileField(upload_to='journal_media/%Y/%m/%d/')
+    thumbnail = models.ImageField(upload_to='journal_thumbnails/', null=True, blank=True)
+    
+    # Metadata
+    duration_seconds = models.IntegerField(null=True, blank=True)  # for audio/video
+    width = models.IntegerField(null=True, blank=True)  # for images/video
+    height = models.IntegerField(null=True, blank=True)
+    file_size_bytes = models.BigIntegerField(null=True, blank=True)
+    
+    # Timestamps
+    uploaded_at = models.DateTimeField(auto_now_add=True)
+    created_at = models.DateTimeField(null=True, blank=True)  # original taken/recorded time
+    
+    # Processing
+    is_processed = models.BooleanField(default=False)
+    processing_status = models.CharField(max_length=20, choices=[
+        ('pending', 'Pending'),
+        ('processing', 'Processing'),
+        ('complete', 'Complete'),
+        ('error', 'Error')
+    ], default='pending')
+    processing_error = models.TextField(blank=True)
+    
+    # AI analysis
+    extracted_text = models.TextField(blank=True)  # OCR from image, transcription from audio/video
+    detected_objects = models.JSONField(default=list)  # from vision API
+    scene_description = models.TextField(blank=True)
+    
+    class Meta:
+        indexes = [
+            models.Index(fields=['journal_entry', 'media_type']),
+            models.Index(fields=['is_processed', 'processing_status']),
+        ]
+    
+    def __str__(self):
+        return f"{self.journal_entry.user.username} - {self.media_type} on {self.uploaded_at.date()}"

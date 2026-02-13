@@ -1,0 +1,50 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container mt-4">
+  <h2>{{ insight.title }}</h2>
+  <p class="text-muted">Category: {{ insight.category }} — Confidence: {{ insight.confidence }}</p>
+  <div class="card mb-3">
+    <div class="card-body">
+      <p>{{ insight.description }}</p>
+      {% if insight.suggested_action %}
+        <h5>Suggested action</h5>
+        <p>{{ insight.suggested_action }}</p>
+      {% endif %}
+      <a href="{% url 'export_insight_json' insight.id %}" class="btn btn-outline-primary">Export JSON</a>
+      <a href="{% url 'export_insight_csv' insight.id %}" class="btn btn-outline-secondary">Export CSV</a>
+      <button id="downloadPdfBtn" class="btn btn-primary">Download PDF</button>
+    </div>
+  </div>
+
+  <h5>Related explainability signals</h5>
+  <ul class="list-group">
+    {% for s in signals %}
+      <li class="list-group-item">
+        <strong>{{ s.trigger_reason }}</strong> — Confidence: {{ s.confidence_score }}
+        <div>{{ s.explanation|truncatechars:200 }}</div>
+      </li>
+    {% empty %}
+      <li class="list-group-item">No related signals yet.</li>
+    {% endfor %}
+  </ul>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+document.getElementById('downloadPdfBtn').addEventListener('click', function(){
+  fetch("{% url 'create_insight_export' insight.id %}", { credentials: 'same-origin' })
+    .then(r => r.json())
+    .then(data => {
+      if(data.file_url){
+        window.location = data.file_url;
+      } else if(data.export_id){
+        window.location = "{% url 'download_insight_export' 0 %}".replace('/0/', '/' + data.export_id + '/');
+      } else {
+        alert('Export failed');
+      }
+    }).catch(e=> alert('Export failed'));
+});
+</script>
+{% endblock %}

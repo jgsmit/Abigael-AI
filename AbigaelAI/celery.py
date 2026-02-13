@@ -35,3 +35,13 @@ app.conf.update(
     worker_prefetch_multiplier=1,
     worker_max_tasks_per_child=1000,
 )
+
+# Schedule periodic regeneration of shared InsightExport files (daily)
+app.conf.beat_schedule = getattr(app.conf, 'beat_schedule', {})
+app.conf.beat_schedule.update({
+    'regenerate_shared_insight_exports_daily': {
+        'task': 'emotion_detection.periodic_regenerate_exports',
+        'schedule': 24 * 60 * 60,  # every 24 hours
+        'args': (7,),  # regenerate exports older than 7 days
+    }
+})

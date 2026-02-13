@@ -1,0 +1,134 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Biofeedback Devices - Abigael{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-lg-12">
+            <h1>Biofeedback Devices</h1>
+            <p class="text-muted">Manage your connected wearable devices</p>
+        </div>
+    </div>
+    
+    <!-- Connected Devices -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <h3>Connected Devices</h3>
+        </div>
+    </div>
+    
+    {% if connected_devices %}
+        <div class="row">
+            {% for device in connected_devices %}
+                <div class="col-md-6 mb-3">
+                    <div class="card">
+                        <div class="card-body">
+                            <h5 class="card-title">{{ device.device_name }}</h5>
+                            <dl class="row">
+                                <dt class="col-sm-4">Device Type:</dt>
+                                <dd class="col-sm-8">{{ device.get_device_type_display }}</dd>
+                                
+                                <dt class="col-sm-4">Status:</dt>
+                                <dd class="col-sm-8">
+                                    <span class="badge bg-success">Connected</span>
+                                </dd>
+                                
+                                <dt class="col-sm-4">Connected:</dt>
+                                <dd class="col-sm-8">{{ device.connected_at|date:"M d, Y H:i" }}</dd>
+                                
+                                <dt class="col-sm-4">Last Sync:</dt>
+                                <dd class="col-sm-8">
+                                    {% if device.last_synced_at %}
+                                        {{ device.last_synced_at|timesince }} ago
+                                    {% else %}
+                                        Never synced
+                                    {% endif %}
+                                </dd>
+                                
+                                <dt class="col-sm-4">Sync Frequency:</dt>
+                                <dd class="col-sm-8">Every {{ device.sync_frequency_minutes }} minutes</dd>
+                                
+                                {% if device.token_expires_at %}
+                                    <dt class="col-sm-4">Token Expires:</dt>
+                                    <dd class="col-sm-8">
+                                        {% now "U" as current_time %}
+                                        {% if device.token_expires_at.timestamp > current_time|floatformat:0 %}
+                                            <span class="text-success">{{ device.token_expires_at|date:"M d, Y" }}</span>
+                                        {% else %}
+                                            <span class="text-danger">Expired - Refresh needed</span>
+                                        {% endif %}
+                                    </dd>
+                                {% endif %}
+                            </dl>
+                            
+                            <div class="btn-group btn-group-sm" role="group">
+                                <a href="{% url 'device_detail' device.id %}" class="btn btn-outline-primary">View Data</a>
+                                <form method="post" action="{% url 'disconnect_device' device.id %}" style="display:inline;">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn btn-outline-danger btn-sm" onclick="return confirm('Disconnect this device?')">
+                                        Disconnect
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="row">
+            <div class="col-12">
+                <div class="alert alert-info">
+                    No connected devices. <a href="{% url 'connect_device' %}">Connect one now</a>
+                </div>
+            </div>
+        </div>
+    {% endif %}
+    
+    <!-- Disconnected Devices -->
+    {% if disconnected_devices %}
+        <div class="row mt-5">
+            <div class="col-12">
+                <h3>Disconnected Devices</h3>
+            </div>
+        </div>
+        
+        <div class="row">
+            {% for device in disconnected_devices %}
+                <div class="col-md-6 mb-3">
+                    <div class="card opacity-75">
+                        <div class="card-body">
+                            <h5 class="card-title text-muted">{{ device.device_name }}</h5>
+                            <dl class="row">
+                                <dt class="col-sm-4">Device Type:</dt>
+                                <dd class="col-sm-8">{{ device.get_device_type_display }}</dd>
+                                
+                                <dt class="col-sm-4">Status:</dt>
+                                <dd class="col-sm-8">
+                                    <span class="badge bg-secondary">Disconnected</span>
+                                </dd>
+                                
+                                <dt class="col-sm-4">Disconnected:</dt>
+                                <dd class="col-sm-8">{{ device.disconnected_at|date:"M d, Y H:i" }}</dd>
+                            </dl>
+                        </div>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    {% endif %}
+    
+    <!-- Add Device Button -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <a href="{% url 'connect_device' %}" class="btn btn-primary btn-lg">
+                <i class="bi bi-plus-circle"></i> Connect New Device
+            </a>
+            <a href="{% url 'biofeedback_dashboard' %}" class="btn btn-secondary btn-lg ms-2">Back to Dashboard</a>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

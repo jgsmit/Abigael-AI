@@ -1,4 +1,5 @@
 from django.shortcuts import render, redirect, get_object_or_404
+from django.urls import reverse
 from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse, HttpResponse
 from django.utils import timezone
@@ -17,6 +18,8 @@ from .companion_engine import companion_engine
 from tasks.models import Task
 import tempfile
 import os
+from .companion_models import Persona, PersonaVariant
+from .forms import PersonaForm, PersonaVariantForm, ProfilePersonaSelectForm
 
 @login_required
 def companion_dashboard(request):
@@ -413,6 +416,159 @@ def request_human_support(request):
             return JsonResponse({'status': 'error', 'message': str(e)})
     
     return JsonResponse({'status': 'error', 'message': 'Invalid request'})
+
+
+# --- Persona admin and user selection views ---
+@login_required
+def persona_admin_list(request):
+    if not request.user.is_staff:
+        return JsonResponse({'status': 'error', 'message': 'Forbidden'}, status=403)
+
+    personas = Persona.objects.all().order_by('-created_at')
+    return render(request, 'companion/persona_list.html', {'personas': personas})
+
+
+@login_required
+def persona_admin_create(request):
+    if not request.user.is_staff:
+        return JsonResponse({'status': 'error', 'message': 'Forbidden'}, status=403)
+
+    if request.method == 'POST':
+        form = PersonaForm(request.POST)
+        if form.is_valid():
+            persona = form.save(commit=False)
+            persona.created_by = request.user
+            persona.save()
+            return redirect('persona_admin_list')
+    else:
+        form = PersonaForm()
+
+    return render(request, 'companion/persona_edit.html', {'form': form, 'create': True})
+
+
+@login_required
+def persona_admin_edit(request, persona_id):
+    if not request.user.is_staff:
+        return JsonResponse({'status': 'error', 'message': 'Forbidden'}, status=403)
+
+    persona = get_object_or_404(Persona, id=persona_id)
+
+    if request.method == 'POST':
+        form = PersonaForm(request.POST, instance=persona)
+        if form.is_valid():
+            form.save()
+            return redirect('persona_admin_list')
+    else:
+        form = PersonaForm(instance=persona)
+
+    return render(request, 'companion/persona_edit.html', {'form': form, 'create': False, 'persona': persona})
+
+
+@login_required
+def persona_variant_list(request, persona_id=None):
+    if not request.user.is_staff:
+        return JsonResponse({'status': 'error', 'message': 'Forbidden'}, status=403)
+
+    if persona_id:
+        persona = get_object_or_404(Persona, id=persona_id)
+        variants = PersonaVariant.objects.filter(persona=persona).order_by('-id')
+    else:
+        variants = PersonaVariant.objects.all().order_by('-id')
+
+    return render(request, 'companion/persona_variant_list.html', {'variants': variants, 'persona_id': persona_id})
+
+
+@login_required
+def persona_variant_create(request, persona_id=None):
+    if not request.user.is_staff:
+        return JsonResponse({'status': 'error', 'message': 'Forbidden'}, status=403)
+
+    initial = {}
+    if persona_id:
+        initial['persona'] = get_object_or_404(Persona, id=persona_id)
+
+    if request.method == 'POST':
+        form = PersonaVariantForm(request.POST)
+        if form.is_valid():
+            form.save()
+            return redirect('persona_variant_list')
+    else:
+        form = PersonaVariantForm(initial=initial)
+
+    return render(request, 'companion/persona_variant_edit.html', {'form': form, 'create': True})
+
+
+@login_required
+def persona_variant_edit(request, variant_id):
+    if not request.user.is_staff:
+        return JsonResponse({'status': 'error', 'message': 'Forbidden'}, status=403)
+
+    variant = get_object_or_404(PersonaVariant, id=variant_id)
+
+    if request.method == 'POST':
+        form = PersonaVariantForm(request.POST, instance=variant)
+        if form.is_valid():
+            form.save()
+            return redirect('persona_variant_list')
+    else:
+        form = PersonaVariantForm(instance=variant)
+
+    return render(request, 'companion/persona_variant_edit.html', {'form': form, 'create': False, 'variant': variant})
+
+
+@login_required
+def persona_select(request):
+    """Allow a user to view available personas and select one for their companion."""
+    user = request.user
+    profile, _ = CompanionProfile.objects.get_or_create(user=user)
+
+    if request.method == 'POST':
+        form = ProfilePersonaSelectForm(request.POST, instance=profile)
+        if form.is_valid():
+            form.save()
+            return redirect('companion_dashboard')
+    else:
+        form = ProfilePersonaSelectForm(instance=profile)
+        # Limit variants to the selected persona for display
+        try:
+            if profile.selected_persona:
+                form.fields['selected_persona_variant'].queryset = profile.selected_persona.variants.filter(is_active=True)
+        except Exception:
+            form.fields['selected_persona_variant'].queryset = PersonaVariant.objects.none()
+
+    personas = Persona.objects.filter(is_public=True).order_by('name')
+
+    return render(request, 'companion/persona_select.html', {
+        'form': form,
+        'personas': personas,
+        'profile': profile
+    })
+
+
+@login_required
+def persona_variants_json(request, persona_id):
+    """Return active variants for a persona as JSON."""
+    try:
+        persona = get_object_or_404(Persona, id=persona_id)
+        variants = persona.variants.filter(is_active=True)
+        data = []
+        for v in variants:
+            item = {'id': v.id, 'name': v.name}
+            if request.user.is_staff:
+                item['edit_url'] = reverse('persona_variant_edit', args=[v.id])
+            data.append(item)
+
+        # Also include a create URL for staff users
+        create_url = None
+        if request.user.is_staff:
+            try:
+                create_url = reverse('persona_variant_create_for_persona', args=[persona.id])
+            except Exception:
+                create_url = reverse('persona_variant_create')
+
+        return JsonResponse({'variants': data, 'create_url': create_url})
+    except Exception as e:
+        return JsonResponse({'variants': [], 'create_url': None})
 
 @login_required
 def detect_crisis(request):

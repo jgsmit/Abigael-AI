@@ -1,0 +1,97 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<h1>Emotional Timeline</h1>
+
+<div style="margin-bottom: 20px;">
+  <label>Show entries from the last:</label>
+  <select id="days_filter" onchange="filterTimeline()">
+    <option value="7" {% if days_back == 7 %}selected{% endif %}>7 days</option>
+    <option value="30" {% if days_back == 30 %}selected{% endif %}>30 days</option>
+    <option value="90" {% if days_back == 90 %}selected{% endif %}>90 days</option>
+    <option value="365" {% if days_back == 365 %}selected{% endif %}>1 year</option>
+  </select>
+  
+  <input type="text" id="search_input" placeholder="Search entries..." style="margin-left: 12px;">
+  <button onclick="searchEntries()">Search</button>
+  
+  <a href="{% url 'journal_create_multimodal' %}" style="margin-left: 12px;">Create Entry</a>
+</div>
+
+<!-- Emotion frequency chart -->
+<div style="margin-bottom: 20px; padding: 10px; border: 1px solid #ddd; border-radius: 4px;">
+  <h3>Emotion Frequency</h3>
+  <div id="emotion_chart">
+    {% for emotion, count in emotion_frequency.items %}
+      <div>{{ emotion }}: {{ count }}</div>
+    {% endfor %}
+  </div>
+</div>
+
+<!-- Timeline entries -->
+<div id="timeline">
+  {% for entry in entries %}
+    <div style="border-left: 4px solid #{{ entry.primary_emotion|default:'gray' }}; padding: 12px; margin-bottom: 12px; background: #f9f9f9;">
+      <div style="display:flex; justify-content:space-between;">
+        <strong>{{ entry.entry_date }}</strong>
+        <span style="color: #666;">{{ entry.primary_emotion }}</span>
+      </div>
+      <p>{{ entry.personal_reflection|truncatewords:30 }}</p>
+      {% if entry.tags %}
+        <div style="margin-top: 6px;">
+          {% for tag in entry.tags %}
+            <span style="background: #e0e0e0; padding: 2px 6px; border-radius: 3px; margin-right: 4px;">{{ tag }}</span>
+          {% endfor %}
+        </div>
+      {% endif %}
+      {% if entry.has_images or entry.has_audio or entry.has_video %}
+        <div style="margin-top: 6px; color: #0066cc;">
+          {% if entry.has_images %}📷{% endif %}
+          {% if entry.has_audio %}🎵{% endif %}
+          {% if entry.has_video %}🎬{% endif %}
+        </div>
+      {% endif %}
+      <div style="margin-top: 8px;">
+        <a href="{% url 'journal_entry_detail' entry.id %}">View</a>
+      </div>
+    </div>
+  {% empty %}
+    <p>No entries in this period.</p>
+  {% endfor %}
+</div>
+
+<script>
+  function filterTimeline() {
+    const days = document.getElementById('days_filter').value;
+    window.location.href = '?days=' + days;
+  }
+  
+  function searchEntries() {
+    const query = document.getElementById('search_input').value;
+    if (query.trim()) {
+      fetch('/emotion_detection/api/journal_search/?q=' + encodeURIComponent(query))
+        .then(r => r.json())
+        .then(data => {
+          const timeline = document.getElementById('timeline');
+          timeline.innerHTML = '';
+          if (data.results.length === 0) {
+            timeline.innerHTML = '<p>No results found.</p>';
+          } else {
+            data.results.forEach(entry => {
+              const div = document.createElement('div');
+              div.innerHTML = `
+                <div style="border-left: 4px solid #ccc; padding: 12px; margin-bottom: 12px; background: #f9f9f9;">
+                  <strong>${entry.date}</strong> — ${entry.emotion}
+                  <p>${entry.preview}...</p>
+                  <a href="/emotion_detection/journal/${entry.id}/">View</a>
+                </div>
+              `;
+              timeline.appendChild(div);
+            });
+          }
+        });
+    }
+  }
+</script>
+
+{% endblock %}

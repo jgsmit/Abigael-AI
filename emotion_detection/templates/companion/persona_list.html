@@ -1,0 +1,20 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<h1>Persona Templates</h1>
+<p><a href="{% url 'persona_admin_create' %}">Create new persona</a></p>
+<ul>
+  {% for p in personas %}
+    <li>
+      <strong>{{ p.name }}</strong> — {{ p.description }}
+      {% if user.is_staff %}
+        &nbsp; <a href="{% url 'persona_admin_edit' p.id %}">Edit</a>
+        &nbsp; <a href="{% url 'persona_variant_list_for_persona' p.id %}">Variants</a>
+      {% endif %}
+    </li>
+  {% empty %}
+    <li>No personas yet.</li>
+  {% endfor %}
+</ul>
+
+{% endblock %}

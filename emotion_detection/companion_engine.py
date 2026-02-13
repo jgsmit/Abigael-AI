@@ -8,7 +8,7 @@ import io
 import json
 import tempfile
 import os
-from .companion_models import Conversation, Message, CompanionProfile
+from .companion_models import Conversation, Message, CompanionProfile, Persona, PersonaVariant
 
 class SpeechToTextEngine:
     """Speech-to-text conversion using Whisper and Google Speech API"""
@@ -435,18 +435,22 @@ class CompanionChatEngine:
         """Generate empathetic companion response"""
         try:
             from .empathy_engine import empathy_engine
-            
+
+            # Load persona traits (if user has selected a persona) and merge with profile
+            persona_traits = self._load_persona_traits_for_user(user)
+
             # Build context for response generation
             context = {
-                'companion_name': profile.companion_name if profile else 'Abigael',
-                'personality_type': profile.personality_type if profile else 'caring_friend',
-                'communication_tone': profile.communication_tone if profile else 'casual',
-                'relationship_depth': profile.relationship_depth if profile else 0.0
+                'companion_name': profile.companion_name if profile else persona_traits.get('companion_name', 'Abigael'),
+                'personality_type': persona_traits.get('personality_type', profile.personality_type if profile else 'caring_friend'),
+                'communication_tone': persona_traits.get('communication_tone', profile.communication_tone if profile else 'casual'),
+                'relationship_depth': persona_traits.get('relationship_depth', profile.relationship_depth if profile else 0.0),
+                'traits': persona_traits
             }
-            
-            # Generate response using empathy engine
+
+            # Generate response using empathy engine and persona-aware context
             response_text = empathy_engine.generate_empathetic_message(
-                emotion, 
+                emotion,
                 context=json.dumps(context)
             )
             
@@ -500,6 +504,46 @@ class CompanionChatEngine:
             return 0.3
         else:
             return 0.5
+
+    def _load_persona_traits_for_user(self, user):
+        """Load and merge persona traits for the given user.
+
+        Priority: CompanionProfile.selected_persona -> persona default traits
+        If no persona selected, returns empty dict.
+        """
+        try:
+            profile = getattr(user, 'companionprofile', None)
+            if not profile or not profile.selected_persona:
+                return {}
+
+            persona = profile.selected_persona
+            traits = dict(persona.traits or {})
+
+            # If user stored a preferred variant id in remembers_preferences, try to merge
+            variant_id = None
+            remembers = getattr(profile, 'remembers_preferences', {}) or {}
+            variant_id = remembers.get('selected_persona_variant')
+
+            if variant_id:
+                try:
+                    variant = PersonaVariant.objects.filter(persona=persona, id=variant_id, is_active=True).first()
+                    if variant:
+                        traits.update(variant.overrides or {})
+                except Exception:
+                    pass
+
+            # Also allow profile-level overrides (voice, tone, name)
+            if profile.preferred_voice:
+                traits.setdefault('default_voice', profile.preferred_voice)
+            if profile.communication_tone:
+                traits.setdefault('communication_tone', profile.communication_tone)
+            if profile.companion_name:
+                traits.setdefault('companion_name', profile.companion_name)
+
+            return traits
+        except Exception as e:
+            print(f"Error loading persona traits: {e}")
+            return {}
 
 # Global companion engine instance
 companion_engine = CompanionChatEngine()

@@ -1,0 +1,23 @@
+{% extends 'admin/base_site.html' %}
+
+{% block content %}
+<h1>Insight Exports</h1>
+<table class="table">
+  <thead>
+    <tr><th>ID</th><th>User</th><th>Title</th><th>Format</th><th>Created</th><th>File</th><th>Actions</th></tr>
+  </thead>
+  <tbody>
+  {% for e in exports %}
+    <tr>
+      <td>{{ e.id }}</td>
+      <td>{{ e.user.username }}</td>
+      <td>{{ e.title }}</td>
+      <td>{{ e.get_export_format_display }}</td>
+      <td>{{ e.created_at }}</td>
+      <td>{% if e.file_url %}<a href="{{ e.file_url }}">Download</a>{% else %}-{% endif %}</td>
+      <td><a class="button" href="{% url 'admin_insight_export_detail' e.id %}">View</a></td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

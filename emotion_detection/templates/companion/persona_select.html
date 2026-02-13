@@ -1,0 +1,151 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<h1>Select Your Companion Persona</h1>
+
+<div>
+  <h2>Available Personas</h2>
+  <ul>
+    {% for p in personas %}
+      <li>
+        <strong>{{ p.name }}</strong> — {{ p.description }}
+        {% if user.is_staff %}
+          &nbsp; <a href="{% url 'persona_admin_edit' p.id %}">Edit</a>
+          &nbsp; <a href="{% url 'persona_variant_list_for_persona' p.id %}">Variants</a>
+          &nbsp; <a href="{% url 'persona_variant_create_for_persona' p.id %}">Create Variant</a>
+        {% endif %}
+      </li>
+    {% empty %}
+      <li>No public personas available.</li>
+    {% endfor %}
+  </ul>
+</div>
+
+<div>
+  <h2>Persona Variants</h2>
+  <div id="variant_create_wrap" style="margin-bottom:6px;"></div>
+  <ul id="variant_list"></ul>
+</div>
+
+<div>
+  <h2>Your Selection</h2>
+  <form method="post">
+    {% csrf_token %}
+    <div>
+      {{ form.selected_persona.label_tag }}<br/>
+      {{ form.selected_persona }}
+    </div>
+    <div style="margin-top:8px;">
+      {{ form.selected_persona_variant.label_tag }}<br/>
+      {{ form.selected_persona_variant }}
+    </div>
+    <button type="submit">Save Persona</button>
+  </form>
+</div>
+
+<script>
+  (function(){
+    const personaSelect = document.querySelector('select[name="selected_persona"]');
+    const variantSelect = document.querySelector('select[name="selected_persona_variant"]');
+    const urlTemplate = "{% url 'persona_variants_json' 0 %}";
+
+    function clearVariants(){
+      if(!variantSelect) return;
+      variantSelect.innerHTML = '<option value="">(No variant)</option>';
+    }
+
+    function loadVariants(personaId){
+      if(!variantSelect) return;
+      if(!personaId){ clearVariants(); return; }
+      const url = urlTemplate.replace('/0/', '/' + personaId + '/');
+      fetch(url).then(r => r.json()).then(data => {
+        variantSelect.innerHTML = '<option value="">(No variant)</option>';
+        (data.variants || []).forEach(v => {
+          const opt = document.createElement('option');
+          opt.value = v.id; opt.textContent = v.name;
+          variantSelect.appendChild(opt);
+        });
+
+        // If a saved variant exists, pre-select it
+        try {
+          // Server-side saved variant (fallback)
+          const serverSaved = {{ profile.selected_persona_variant.id|default:'null' }};
+          // Client-side saved variant key per user
+          const storageKey = 'abigael_selected_variant_user_{{ user.id }}';
+          const clientSaved = localStorage.getItem(storageKey);
+
+          // Preference: clientSaved -> serverSaved -> none
+          if (clientSaved) {
+            variantSelect.value = String(clientSaved);
+          } else if (serverSaved) {
+            variantSelect.value = String(serverSaved);
+          }
+        } catch (e) {
+          // ignore template/rendering issues
+        }
+
+        // Populate variant list with edit links for staff
+        const variantsList = document.getElementById('variant_list');
+        if (variantsList) {
+          variantsList.innerHTML = '';
+          (data.variants || []).forEach(v => {
+            const li = document.createElement('li');
+            li.textContent = v.name;
+            if (v.edit_url) {
+              const a = document.createElement('a');
+              a.href = v.edit_url;
+              a.textContent = ' edit';
+              a.style.marginLeft = '8px';
+              li.appendChild(a);
+            }
+            variantsList.appendChild(li);
+          });
+          // show create link if provided
+          const createWrap = document.getElementById('variant_create_wrap');
+          if (createWrap) {
+            if (data.create_url) {
+              createWrap.innerHTML = '<a href="' + data.create_url + '">Create variant for this persona</a>';
+            } else {
+              createWrap.innerHTML = '';
+            }
+          }
+        }
+      }).catch(() => {
+        clearVariants();
+      });
+    }
+
+    // Save user's variant choice to localStorage so it persists across reloads
+    function saveVariantChoice(){
+      try {
+        if (!variantSelect) return;
+        const storageKey = 'abigael_selected_variant_user_{{ user.id }}';
+        if (variantSelect.value) {
+          localStorage.setItem(storageKey, variantSelect.value);
+        } else {
+          localStorage.removeItem(storageKey);
+        }
+      } catch (e) {}
+    }
+
+    if (variantSelect) {
+      variantSelect.addEventListener('change', saveVariantChoice);
+    }
+
+    // Also save on form submit (in case selection just changed)
+    const form = document.querySelector('form');
+    if (form) {
+      form.addEventListener('submit', function(){ saveVariantChoice(); });
+    }
+
+    if(personaSelect){
+      personaSelect.addEventListener('change', function(e){
+        loadVariants(e.target.value);
+      });
+      // load initially if a persona already selected
+      if(personaSelect.value){ loadVariants(personaSelect.value); }
+    }
+  })();
+</script>
+
+{% endblock %}

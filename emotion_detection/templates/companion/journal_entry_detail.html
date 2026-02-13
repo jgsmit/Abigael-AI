@@ -1,0 +1,79 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<h1>Journal Entry — {{ entry.entry_date }}</h1>
+
+<div style="padding: 12px; background: #f9f9f9; border-radius: 4px; margin-bottom: 20px;">
+  <p><strong>Emotion:</strong> {{ entry.primary_emotion }} (intensity: {{ entry.emotion_intensity }})</p>
+  <p><strong>Type:</strong> {{ entry.get_entry_type_display }}</p>
+  
+  {% if entry.emotion_notes %}
+    <div><strong>Emotion Notes:</strong> {{ entry.emotion_notes }}</div>
+  {% endif %}
+  
+  {% if entry.personal_reflection %}
+    <div style="margin-top: 12px;">
+      <strong>Reflection:</strong>
+      <p>{{ entry.personal_reflection }}</p>
+    </div>
+  {% endif %}
+  
+  {% if entry.gratitude_notes %}
+    <div style="margin-top: 12px;">
+      <strong>Gratitude:</strong>
+      <p>{{ entry.gratitude_notes }}</p>
+    </div>
+  {% endif %}
+  
+  {% if entry.tags %}
+    <div style="margin-top: 12px;">
+      <strong>Tags:</strong>
+      {% for tag in entry.tags %}
+        <span style="background: #e0e0e0; padding: 2px 6px; border-radius: 3px; margin-right: 4px;">{{ tag }}</span>
+      {% endfor %}
+    </div>
+  {% endif %}
+</div>
+
+<!-- Media Gallery -->
+{% if media %}
+  <div style="margin-top: 20px;">
+    <h3>Media</h3>
+    <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px;">
+      {% for m in media %}
+        <div style="border: 1px solid #ddd; padding: 8px; border-radius: 4px;">
+          {% if m.media_type == 'image' %}
+            <img src="{{ m.file.url }}" style="width: 100%; height: auto; border-radius: 4px;" alt="Journal image">
+          {% elif m.media_type == 'audio' %}
+            <audio controls style="width: 100%;"><source src="{{ m.file.url }}"></audio>
+          {% elif m.media_type == 'video' %}
+            <video controls style="width: 100%; height: auto;"><source src="{{ m.file.url }}"></video>
+          {% endif %}
+          <p style="margin-top: 6px; font-size: 0.9em; color: #666;">{{ m.media_type|upper }} — {{ m.uploaded_at }}</p>
+          {% if m.extracted_text %}
+            <p style="font-size: 0.9em; margin-top: 6px;">{{ m.extracted_text|truncatewords:20 }}</p>
+          {% endif %}
+        </div>
+      {% endfor %}
+    </div>
+  </div>
+{% endif %}
+
+<!-- AI Insights -->
+{% if entry.ai_insights %}
+  <div style="margin-top: 20px; padding: 12px; background: #f0f8ff; border-left: 4px solid #0066cc; border-radius: 4px;">
+    <h3>AI Insights</h3>
+    <p>{{ entry.ai_insights }}</p>
+  </div>
+{% endif %}
+
+<!-- Export -->
+<div style="margin-top: 20px;">
+  <a href="{% url 'journal_export' %}?days=1">Export this entry</a>
+</div>
+
+<div style="margin-top: 12px;">
+  <a href="{% url 'journal_timeline' %}">Back to timeline</a>
+</div>
+
+{% endblock %}

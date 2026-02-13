@@ -1,0 +1,268 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Biofeedback Dashboard - Abigael{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-lg-12">
+            <h1>Biofeedback Dashboard</h1>
+            <p class="text-muted">Monitor your physical health data from connected wearables</p>
+        </div>
+    </div>
+    
+    <!-- Quick Stats -->
+    <div class="row mt-4">
+        {% if latest_summary %}
+            <div class="col-md-3">
+                <div class="card">
+                    <div class="card-body">
+                        <h6 class="card-title text-muted">Heart Rate</h6>
+                        <h3>{{ latest_summary.avg_heart_rate|floatformat:0 }} <small>BPM</small></h3>
+                        <small class="{% if latest_summary.heart_rate_trend == 'improving' %}text-success{% elif latest_summary.heart_rate_trend == 'declining' %}text-danger{% else %}text-muted{% endif %}">
+                            {% if latest_summary.heart_rate_trend == 'improving' %}
+                                ↓ Improving
+                            {% elif latest_summary.heart_rate_trend == 'declining' %}
+                                ↑ Rising
+                            {% else %}
+                                → Stable
+                            {% endif %}
+                        </small>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-3">
+                <div class="card">
+                    <div class="card-body">
+                        <h6 class="card-title text-muted">Sleep</h6>
+                        <h3>{{ latest_summary.sleep_duration_hours|floatformat:1 }} <small>hrs</small></h3>
+                        <small class="{% if latest_summary.sleep_quality >= 75 %}text-success{% elif latest_summary.sleep_quality >= 50 %}text-warning{% else %}text-danger{% endif %}">
+                            Quality: {{ latest_summary.sleep_quality|floatformat:0 }}%
+                        </small>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-3">
+                <div class="card">
+                    <div class="card-body">
+                        <h6 class="card-title text-muted">Stress Level</h6>
+                        <h3>{{ latest_summary.stress_level|floatformat:0 }}</h3>
+                        <small class="{% if latest_summary.stress_level <= 50 %}text-success{% elif latest_summary.stress_level <= 70 %}text-warning{% else %}text-danger{% endif %}">
+                            {% if latest_summary.stress_level <= 50 %}Low{% elif latest_summary.stress_level <= 70 %}Moderate{% else %}High{% endif %}
+                        </small>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-3">
+                <div class="card">
+                    <div class="card-body">
+                        <h6 class="card-title text-muted">Activity</h6>
+                        <h3>{{ latest_summary.steps|default:"0"|floatformat:-1 }} <small>steps</small></h3>
+                        <small>{{ latest_summary.active_minutes|default:"0" }} min active</small>
+                    </div>
+                </div>
+            </div>
+        {% else %}
+            <div class="col-12">
+                <div class="alert alert-info">
+                    No biofeedback data available yet. Connect a device to get started.
+                </div>
+            </div>
+        {% endif %}
+    </div>
+    
+    <!-- Alert Section -->
+    {% if alert_count > 0 %}
+        <div class="row mt-4">
+            <div class="col-12">
+                <div class="alert alert-warning">
+                    <h5>
+                        <i class="bi bi-exclamation-triangle"></i>
+                        {{ alert_count }} active alert{{ alert_count|pluralize }}
+                    </h5>
+                    <div class="mt-2">
+                        {% for alert in pending_alerts %}
+                            <div class="small mb-2">
+                                <strong>{{ alert.get_alert_type_display }}:</strong> {{ alert.description }}
+                                <a href="{% url 'acknowledge_alert' alert.id %}" class="ms-2">Acknowledge</a>
+                            </div>
+                        {% endfor %}
+                    </div>
+                    <a href="{% url 'alert_dashboard' %}" class="btn btn-sm btn-outline-warning mt-2">View All Alerts</a>
+                </div>
+            </div>
+        </div>
+    {% endif %}
+    
+    <!-- Devices Section -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <h3>Connected Devices</h3>
+        </div>
+    </div>
+    
+    <div class="row">
+        {% if devices %}
+            {% for device in devices %}
+                <div class="col-md-4 mb-3">
+                    <div class="card">
+                        <div class="card-body">
+                            <h5 class="card-title">{{ device.device_name }}</h5>
+                            <p class="card-text text-muted small">
+                                <strong>Type:</strong> {{ device.get_device_type_display }}<br>
+                                <strong>Connected:</strong> {{ device.connected_at|date:"M d, Y" }}<br>
+                                {% if device.last_synced_at %}
+                                    <strong>Last Sync:</strong> {{ device.last_synced_at|timesince }} ago
+                                {% else %}
+                                    <strong>Last Sync:</strong> Never
+                                {% endif %}
+                            </p>
+                            <div class="btn-group btn-group-sm" role="group">
+                                <a href="{% url 'device_detail' device.id %}" class="btn btn-outline-primary">Details</a>
+                                <a href="{% url 'disconnect_device' device.id %}" class="btn btn-outline-danger" onclick="return confirm('Disconnect device?')">Disconnect</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            {% endfor %}
+        {% else %}
+            <div class="col-12">
+                <p class="text-muted">No devices connected yet.</p>
+            </div>
+        {% endif %}
+        
+        <div class="col-md-4 mb-3">
+            <div class="card border-primary">
+                <div class="card-body text-center">
+                    <h5 class="card-title">Add Device</h5>
+                    <p class="card-text small text-muted">Connect a new wearable</p>
+                    <a href="{% url 'connect_device' %}" class="btn btn-primary">Connect Device</a>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Weekly Trends -->
+    {% if weekly_data %}
+        <div class="row mt-4">
+            <div class="col-12">
+                <h3>7-Day Trends</h3>
+            </div>
+        </div>
+        
+        <div class="row">
+            <div class="col-lg-8">
+                <div class="card">
+                    <div class="card-body">
+                        <canvas id="trendChart"></canvas>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-lg-4">
+                <div class="card">
+                    <div class="card-body">
+                        <h5 class="card-title">Summary</h5>
+                        <dl class="row">
+                            <dt class="col-6">Avg HR:</dt>
+                            <dd class="col-6">{{ avg_hr|default:"N/A" }} BPM</dd>
+                            
+                            <dt class="col-6">Avg Sleep:</dt>
+                            <dd class="col-6">{{ avg_sleep|default:"N/A" }} hrs</dd>
+                            
+                            <dt class="col-6">Avg Stress:</dt>
+                            <dd class="col-6">{{ avg_stress|default:"N/A" }}</dd>
+                        </dl>
+                    </div>
+                </div>
+            </div>
+        </div>
+    {% endif %}
+    
+    <!-- Settings & Links -->
+    <div class="row mt-4 mb-4">
+        <div class="col-12">
+            <a href="{% url 'biofeedback_settings' %}" class="btn btn-secondary">Configure Settings</a>
+            <a href="{% url 'alert_dashboard' %}" class="btn btn-outline-secondary">View All Alerts</a>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const weeklyData = {{ weekly_data|safe }};
+    
+    if (weeklyData && weeklyData.length > 0) {
+        const ctx = document.getElementById('trendChart').getContext('2d');
+        
+        const dates = weeklyData.map(d => d.date);
+        const hrData = weeklyData.map(d => d.avg_heart_rate || 0);
+        const sleepData = weeklyData.map(d => d.sleep_duration_hours || 0);
+        const stressData = weeklyData.map(d => d.stress_level || 0);
+        
+        new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: dates,
+                datasets: [
+                    {
+                        label: 'Avg Heart Rate (BPM)',
+                        data: hrData,
+                        borderColor: '#dc3545',
+                        backgroundColor: 'rgba(220, 53, 69, 0.1)',
+                        yAxisID: 'y',
+                    },
+                    {
+                        label: 'Sleep Duration (hrs)',
+                        data: sleepData,
+                        borderColor: '#0d6efd',
+                        backgroundColor: 'rgba(13, 110, 253, 0.1)',
+                        yAxisID: 'y1',
+                    },
+                    {
+                        label: 'Stress Level',
+                        data: stressData,
+                        borderColor: '#ffc107',
+                        backgroundColor: 'rgba(255, 193, 7, 0.1)',
+                        yAxisID: 'y2',
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                interaction: {
+                    mode: 'index',
+                    intersect: false,
+                },
+                scales: {
+                    y: {
+                        type: 'linear',
+                        display: true,
+                        position: 'left',
+                        title: { display: true, text: 'BPM' },
+                    },
+                    y1: {
+                        type: 'linear',
+                        display: true,
+                        position: 'center',
+                        title: { display: true, text: 'Hours' },
+                    },
+                    y2: {
+                        type: 'linear',
+                        display: true,
+                        position: 'right',
+                        title: { display: true, text: 'Stress' },
+                    },
+                },
+            },
+        });
+    }
+});
+</script>
+
+{% endblock %}

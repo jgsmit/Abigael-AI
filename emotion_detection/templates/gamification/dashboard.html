@@ -1,0 +1,175 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Gamification Dashboard - Abigael{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-lg-12">
+            <h1>Your Progress & Achievements</h1>
+            <p class="text-muted">Track your engagement, streaks, and rewards</p>
+        </div>
+    </div>
+    
+    <!-- Streak Section -->
+    <div class="row mt-4">
+        <div class="col-lg-4">
+            <div class="card border-success">
+                <div class="card-body text-center">
+                    <h6 class="card-title text-muted">Current Streak</h6>
+                    <h2 class="text-success">{{ streak.current_streak_count }}</h2>
+                    <p class="mb-0">days</p>
+                    <small class="text-muted">
+                        Longest: {{ streak.longest_streak_count }} days
+                    </small>
+                    <div class="mt-3">
+                        <a href="{% url 'streak_detail' %}" class="btn btn-sm btn-outline-success">
+                            More Details
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Points Section -->
+        <div class="col-lg-4">
+            <div class="card border-primary">
+                <div class="card-body text-center">
+                    <h6 class="card-title text-muted">Reward Points</h6>
+                    <h2 class="text-primary">{{ rewards.available_points }}</h2>
+                    <p class="mb-0">available</p>
+                    <small class="text-muted">
+                        Total earned: {{ rewards.total_points }}
+                    </small>
+                    <div class="mt-3">
+                        <a href="{% url 'reward_shop' %}" class="btn btn-sm btn-outline-primary">
+                            Redeem Rewards
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Tier Section -->
+        <div class="col-lg-4">
+            <div class="card">
+                <div class="card-body text-center">
+                    <h6 class="card-title text-muted">Current Tier</h6>
+                    <h2>{{ rewards.get_current_tier_display|truncatechars:20 }}</h2>
+                    <div class="progress mt-3" style="height: 10px;">
+                        <div class="progress-bar" role="progressbar" style="width: {{ rewards.tier_progress }}%"></div>
+                    </div>
+                    <small class="text-muted d-block mt-2">{{ rewards.tier_progress }}% to next tier</small>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Badges Section -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <h3>Badges ({{ earned_badge_count }} earned)</h3>
+        </div>
+    </div>
+    
+    {% if recent_badges %}
+        <div class="row">
+            {% for ub in recent_badges %}
+                <div class="col-md-4 mb-3">
+                    <div class="card text-center">
+                        <div class="card-body">
+                            <div style="font-size: 2em; margin-bottom: 10px;">
+                                {{ ub.badge.icon|default:"🏆" }}
+                            </div>
+                            <h6 class="card-title">{{ ub.badge.name }}</h6>
+                            <p class="card-text small text-muted">{{ ub.badge.description }}</p>
+                            <small class="d-block mt-2">
+                                Earned {{ ub.earned_at|date:"M d, Y" }}
+                            </small>
+                        </div>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+        
+        <div class="row mt-2">
+            <div class="col-12">
+                <a href="{% url 'badges_view' %}" class="btn btn-outline-secondary">View All Badges</a>
+            </div>
+        </div>
+    {% else %}
+        <div class="row">
+            <div class="col-12">
+                <p class="text-muted">No badges earned yet. Keep engaging to unlock achievements!</p>
+                <a href="{% url 'badges_view' %}" class="btn btn-outline-secondary">See Available Badges</a>
+            </div>
+        </div>
+    {% endif %}
+    
+    <!-- In-Progress Badges -->
+    {% if badge_progress %}
+        <div class="row mt-4">
+            <div class="col-12">
+                <h4>Badges In Progress</h4>
+            </div>
+        </div>
+        
+        <div class="row">
+            {% for bp in badge_progress %}
+                <div class="col-md-4 mb-3">
+                    <div class="card opacity-75">
+                        <div class="card-body">
+                            <h6 class="card-title">{{ bp.badge.name }}</h6>
+                            <div class="progress">
+                                <div class="progress-bar" role="progressbar" style="width: {{ bp.eligibility.progress_percentage }}%">
+                                    {{ bp.eligibility.progress_percentage }}%
+                                </div>
+                            </div>
+                            <small class="d-block mt-2 text-muted">
+                                {{ bp.eligibility.current_value|floatformat:-1 }}/{{ bp.eligibility.required_value|floatformat:-1 }}
+                            </small>
+                        </div>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    {% endif %}
+    
+    <!-- Recent Transactions -->
+    {% if recent_transactions %}
+        <div class="row mt-4">
+            <div class="col-12">
+                <h4>Recent Activity</h4>
+            </div>
+        </div>
+        
+        <div class="row">
+            <div class="col-12">
+                <ul class="list-group">
+                    {% for trans in recent_transactions %}
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            <div>
+                                <strong>{{ trans.reason|default:trans.get_transaction_type_display }}</strong>
+                                <small class="d-block text-muted">{{ trans.created_at|date:"M d, Y H:i" }}</small>
+                            </div>
+                            <span class="badge {% if trans.transaction_type == 'earned' %}bg-success{% else %}bg-secondary{% endif %}">
+                                {{ trans.amount }} pts
+                            </span>
+                        </li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+    {% endif %}
+    
+    <!-- Navigation -->
+    <div class="row mt-4 mb-4">
+        <div class="col-12">
+            <a href="{% url 'gamification_profile' %}" class="btn btn-outline-primary">View Full Profile</a>
+            <a href="{% url 'leaderboard_view' %}" class="btn btn-outline-secondary">View Leaderboard</a>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

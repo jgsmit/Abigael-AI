@@ -4,14 +4,13 @@ from django.http import JsonResponse
 from django.utils import timezone
 from datetime import datetime, timedelta
 from .models import Task, EmotionTag, EmotionRecord, TaskEmotionPattern
-from emotion_detection.emotion_detector import emotion_detector, get_emotion_recommendations
+from emotion_detection.emotion_detector import emotion_detector
 from emotion_detection.voice_detector import voice_detector
 from emotion_detection.typing_detector import typing_detector
 from emotion_detection.empathy_engine import empathy_engine
 from emotion_detection.analytics_visualizer import analytics_visualizer
 from emotion_detection.biofeedback_integrator import biofeedback_integrator
 from emotion_detection.biofeedback_models import BiofeedbackDevice
-import json
 
 @login_required
 def dashboard(request):
@@ -24,30 +23,6 @@ def hud_dashboard(request):
     """HUD-themed futuristic dashboard with neon effects"""
     # Serves the HUD version with neon glows, scanlines, and sci-fi styling
     return render(request, 'dashboard/hud_unified_dashboard.html')
-    
-    # Generate empathetic message
-    empathetic_message = empathy_engine.generate_empathetic_message(
-        current_emotion, 
-        current_task=recommendations[0] if recommendations else None
-    )
-    
-    context = {
-        'tasks': user_tasks,
-        'recommendations': recommendations,
-        'current_emotion': current_emotion,
-        'current_emotion_data': current_emotion_data,
-        'recent_emotions': recent_emotions,
-        'total_tasks': total_tasks,
-        'completed_tasks': completed_tasks,
-        'pending_tasks': pending_tasks,
-        'emotion_tags': EmotionTag.objects.all(),
-        'empathetic_message': empathetic_message,
-        'stress_level': stress_level,
-        'energy_level': energy_level,
-        'biofeedback_available': BiofeedbackDevice.objects.filter(user=request.user, is_active=True).exists(),
-    }
-    
-    return render(request, 'tasks/dashboard.html', context)
 
 @login_required
 def start_multimodal_detection(request):
@@ -221,31 +196,20 @@ def motivation_chat(request):
     if request.method == 'POST':
         user_message = request.POST.get('message', '')
         current_emotion = request.POST.get('current_emotion', 'neutral')
-        
+
         # Generate empathetic response
         response = empathy_engine.generate_empathetic_message(
             current_emotion, context=user_message
         )
-        
+
         return JsonResponse({'status': 'success', 'response': response})
-    
-    # Get current emotion state for initial message
+
+    # GET: render dedicated chat interface with initial emotional context
     emotion_state = empathy_engine.get_comprehensive_emotion_state(request.user)
-    current_emotion = emotion_state.get('combined', 'neutral')
-    if priority_filter:
-        tasks = tasks.filter(priority=priority_filter)
-    
-    # Filter by emotion tag
-    emotion_filter = request.GET.get('emotion')
-    if emotion_filter:
-        tasks = tasks.filter(required_emotions__name=emotion_filter)
-    
     context = {
-        'tasks': tasks.order_by('-created_at'),
-        'emotion_tags': EmotionTag.objects.all(),
+        'current_emotion': emotion_state.get('combined', 'neutral'),
     }
-    
-    return render(request, 'tasks/task_list.html', context)
+    return render(request, 'tasks/motivation_chat.html', context)
 
 @login_required
 def create_task(request):

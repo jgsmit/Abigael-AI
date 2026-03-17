@@ -327,13 +327,15 @@ The system learns from your behavior patterns:
 - Plus 2 more endpoints
 
 
-### **System Reliability APIs (4 endpoints)**
+### **System Reliability APIs (6 endpoints)**
 - `GET /emotion_detection/api/system/memory-health/` - Memory persistence + autonomous learning health score
 - `GET /emotion_detection/api/system/readiness/` - End-to-end AI readiness checks with actionable recommendations
 - `POST /emotion_detection/api/system/self-heal/` - Trigger safe self-healing actions when runtime is idle
 - `POST /emotion_detection/api/system/self-improve/` - Run adaptive learning cycle from recent outcomes and feedback
+- `GET /emotion_detection/api/system/project-audit/` - Detect duplicate routes, unrouted autonomous surfaces, and conflict-prone repo artifacts
+- `GET /emotion_detection/api/system/cleanup-plan/` - Generate prioritized conflict-reduction actions and file hygiene plan
 
-**Total**: 24 API endpoints
+**Total**: 26 API endpoints
 
 ## 📁 **Project Structure**
 

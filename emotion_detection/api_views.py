@@ -1122,6 +1122,143 @@ def system_self_improve(request):
 
 
 @login_required
+def system_project_audit(request):
+    """Project integrity audit API to detect unused/duplicate/conflict-prone setup."""
+    try:
+        root = Path(__file__).resolve().parents[1]
+
+        # 1) Duplicate URL names across app url modules
+        url_files = [root / 'tasks' / 'urls.py', root / 'emotion_detection' / 'urls.py']
+        route_name_re = re.compile(r"name='([^']+)'")
+        route_names = {}
+        for file_path in url_files:
+            if not file_path.exists():
+                continue
+            for line_no, line in enumerate(file_path.read_text().splitlines(), start=1):
+                match = route_name_re.search(line)
+                if not match:
+                    continue
+                route_name = match.group(1)
+                route_names.setdefault(route_name, []).append({
+                    'file': str(file_path.relative_to(root)),
+                    'line': line_no,
+                })
+
+        duplicate_route_names = {
+            name: refs for name, refs in route_names.items() if len(refs) > 1
+        }
+
+        # 2) Unrouted autonomous views check
+        tasks_urls = (root / 'tasks' / 'urls.py').read_text() if (root / 'tasks' / 'urls.py').exists() else ''
+        autonomous_views = root / 'tasks' / 'autonomous_views.py'
+        autonomous_functions = []
+        if autonomous_views.exists():
+            tree = ast.parse(autonomous_views.read_text())
+            autonomous_functions = [n.name for n in tree.body if isinstance(n, ast.FunctionDef)]
+
+        missing_autonomous_routes = []
+        for fn in [
+            'knowledge_graph_view',
+            'goals_view',
+            'weekly_reports_view',
+            'federated_learning_status',
+            'get_rl_task_recommendations',
+            'submit_task_feedback',
+            'toggle_federated_learning',
+        ]:
+            if fn in autonomous_functions and fn not in tasks_urls:
+                missing_autonomous_routes.append(fn)
+
+        # 3) Bytecode artifacts tracked in repo (conflict noise)
+        tracked_pyc = []
+        for pyc in root.rglob('*.pyc'):
+            if '.git' in pyc.parts:
+                continue
+            tracked_pyc.append(str(pyc.relative_to(root)))
+
+        result = {
+            'status': 'success',
+            'audit': {
+                'duplicate_route_names': duplicate_route_names,
+                'missing_autonomous_routes': missing_autonomous_routes,
+                'tracked_bytecode_files_count': len(tracked_pyc),
+                'tracked_bytecode_sample': tracked_pyc[:20],
+                'recommendation': 'Resolve duplicate route names, ensure critical autonomous views are routed, and remove tracked bytecode files to avoid merge conflicts.',
+            },
+            'message': 'Project audit completed.',
+        }
+        return JsonResponse(result)
+    except Exception as e:
+        return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
+
+
+@login_required
+def system_cleanup_plan(request):
+    """Return an actionable plan to reduce conflicts and keep important files used."""
+    try:
+        root = Path(__file__).resolve().parents[1]
+
+        # Reuse project-audit style checks
+        url_files = [root / 'tasks' / 'urls.py', root / 'emotion_detection' / 'urls.py']
+        route_name_re = re.compile(r"name='([^']+)'")
+        route_names = {}
+        for file_path in url_files:
+            if not file_path.exists():
+                continue
+            for line_no, line in enumerate(file_path.read_text().splitlines(), start=1):
+                m = route_name_re.search(line)
+                if m:
+                    route_names.setdefault(m.group(1), []).append({
+                        'file': str(file_path.relative_to(root)),
+                        'line': line_no,
+                    })
+
+        duplicate_route_names = {k: v for k, v in route_names.items() if len(v) > 1}
+
+        # Top-level status/report docs that may drift if too many are kept as sources of truth
+        top_docs = [
+            'ABIGAEL_COMPLETE.md',
+            'COMPLETION_SUMMARY.txt',
+            'IMPLEMENTATION_COMPLETE.md',
+            'IMPLEMENTATION_STATUS.md',
+            'VERIFICATION_COMPLETE.md',
+            'EXECUTIVE_SUMMARY.md',
+            'AI_ANALYSIS_REPORT.md',
+            'ANALYSIS_COMPLETE.md',
+            'ANALYSIS_INDEX.md',
+            'VISUAL_SUMMARY.md',
+        ]
+        docs_present = [d for d in top_docs if (root / d).exists()]
+
+        # Bytecode noise check
+        tracked_pyc = [str(p.relative_to(root)) for p in root.rglob('*.pyc') if '.git' not in p.parts]
+
+        plan_steps = []
+        if duplicate_route_names:
+            plan_steps.append('Resolve duplicate URL route names or namespace apps to avoid reverse() conflicts.')
+        if len(docs_present) >= 6:
+            plan_steps.append('Choose 1-2 canonical status docs and archive the rest to avoid documentation drift.')
+        if tracked_pyc:
+            plan_steps.append('Remove tracked .pyc files and keep them excluded via .gitignore.')
+
+        if not plan_steps:
+            plan_steps.append('No immediate cleanup blockers detected. Continue with periodic project-audit checks.')
+
+        return JsonResponse({
+            'status': 'success',
+            'cleanup_plan': {
+                'duplicate_route_names': duplicate_route_names,
+                'documentation_files_present': docs_present,
+                'bytecode_artifacts_count': len(tracked_pyc),
+                'actions': plan_steps,
+            },
+            'message': 'Cleanup plan generated successfully.',
+        })
+    except Exception as e:
+        return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
+
+
+@login_required
 def system_self_heal(request):
     """Trigger safe self-healing actions for runtime readiness issues."""
     if request.method != 'POST':

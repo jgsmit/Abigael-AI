@@ -98,3 +98,29 @@ class SystemReadinessApiTests(TestCase):
         self.assertIsNotNone(config)
         self.assertTrue(isinstance(config.parameter_value, list))
         self.assertGreaterEqual(len(config.parameter_value), 1)
+
+
+    def test_project_audit_endpoint_reports_structure(self):
+        response = self.client.get(reverse('api_system_project_audit'))
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual(payload['status'], 'success')
+        self.assertIn('audit', payload)
+        self.assertIn('duplicate_route_names', payload['audit'])
+        self.assertIn('missing_autonomous_routes', payload['audit'])
+
+    def test_project_audit_has_no_biofeedback_route_name_collision(self):
+        response = self.client.get(reverse('api_system_project_audit'))
+        self.assertEqual(response.status_code, 200)
+        duplicates = response.json()['audit']['duplicate_route_names']
+        self.assertNotIn('biofeedback_settings', duplicates)
+
+
+    def test_cleanup_plan_endpoint_reports_actions(self):
+        response = self.client.get(reverse('api_system_cleanup_plan'))
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual(payload['status'], 'success')
+        self.assertIn('cleanup_plan', payload)
+        self.assertIn('actions', payload['cleanup_plan'])
+        self.assertTrue(isinstance(payload['cleanup_plan']['actions'], list))

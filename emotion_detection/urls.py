@@ -114,4 +114,6 @@ urlpatterns = [
     path('api/system/readiness/', api_views.system_readiness_report, name='api_system_readiness'),
     path('api/system/self-heal/', api_views.system_self_heal, name='api_system_self_heal'),
     path('api/system/self-improve/', api_views.system_self_improve, name='api_system_self_improve'),
+    path('api/system/project-audit/', api_views.system_project_audit, name='api_system_project_audit'),
+    path('api/system/cleanup-plan/', api_views.system_cleanup_plan, name='api_system_cleanup_plan'),
 ]

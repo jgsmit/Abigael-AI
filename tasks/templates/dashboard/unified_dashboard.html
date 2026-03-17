@@ -180,6 +180,33 @@
             transform: translateY(-2px);
             box-shadow: 0 4px 10px rgba(102, 126, 234, 0.4);
         }
+
+        .quick-action-card {
+            border: 1px solid #e8e8e8;
+            border-radius: 12px;
+            padding: 1rem;
+            background: #fff;
+            height: 100%;
+            transition: all 0.2s ease;
+        }
+
+        .quick-action-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
+            border-color: var(--primary);
+        }
+
+        .quick-action-card i {
+            font-size: 1.2rem;
+            color: var(--primary);
+        }
+
+        .health-pill { padding: 0.35rem 0.7rem; border-radius: 999px; font-weight: 700; font-size: 0.85rem; display:inline-block; }
+        .health-green { background:#e8f5e9; color:#2e7d32; }
+        .health-yellow { background:#fff8e1; color:#ef6c00; }
+        .health-red { background:#ffebee; color:#c62828; }
+        .fix-button-row { display:flex; flex-wrap:wrap; gap:0.5rem; margin-top:0.75rem; }
+
     </style>
 </head>
 <body>
@@ -302,10 +329,10 @@
         class DashboardAPI {
             static async fetchComplete() {
                 try {
-                    const response = await fetch('/emotion_detection/api/user/complete/');
+                    const response = await fetch('/companion/api/user/complete/');
                     if (response.ok) {
                         const data = await response.json();
-                        return data.status === 'success' ? data.data : null;
+                        return data.status === 'success' ? (data.data || data) : null;
                     }
                 } catch (error) {
                     console.error('Error fetching dashboard data:', error);
@@ -315,10 +342,10 @@
 
             static async fetchTasksAnalytics() {
                 try {
-                    const response = await fetch('/tasks/api/tasks/analytics/');
+                    const response = await fetch('/api/tasks/analytics/');
                     if (response.ok) {
                         const data = await response.json();
-                        return data.status === 'success' ? data.data : null;
+                        return data.status === 'success' ? (data.data || data) : null;
                     }
                 } catch (error) {
                     console.error('Error fetching task analytics:', error);
@@ -328,13 +355,55 @@
 
             static async fetchRecommendations() {
                 try {
-                    const response = await fetch('/tasks/api/tasks/recommendations/');
+                    const response = await fetch('/api/tasks/recommendations/');
                     if (response.ok) {
                         const data = await response.json();
-                        return data.status === 'success' ? data.data : null;
+                        return data.status === 'success' ? (data.data || data) : null;
                     }
                 } catch (error) {
                     console.error('Error fetching recommendations:', error);
+                }
+                return null;
+            }
+
+            static async fetchSystemReadiness() {
+                try {
+                    const response = await fetch('/companion/api/system/readiness/');
+                    if (response.ok) {
+                        return await response.json();
+                    }
+                } catch (error) {
+                    console.error('Error fetching system readiness:', error);
+                }
+                return null;
+            }
+
+            static async triggerSelfHeal() {
+                try {
+                    const response = await fetch('/companion/api/system/self-heal/', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                    });
+                    if (response.ok) {
+                        return await response.json();
+                    }
+                } catch (error) {
+                    console.error('Error running self-heal:', error);
+                }
+                return null;
+            }
+
+            static async triggerSelfImprove() {
+                try {
+                    const response = await fetch('/companion/api/system/self-improve/', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                    });
+                    if (response.ok) {
+                        return await response.json();
+                    }
+                } catch (error) {
+                    console.error('Error running self-improve:', error);
                 }
                 return null;
             }
@@ -344,14 +413,15 @@
 
         // Initialize Dashboard
         async function initializeDashboard() {
-            const [complete, analytics, recommendations] = await Promise.all([
+            const [complete, analytics, recommendations, readiness] = await Promise.all([
                 DashboardAPI.fetchComplete(),
                 DashboardAPI.fetchTasksAnalytics(),
-                DashboardAPI.fetchRecommendations()
+                DashboardAPI.fetchRecommendations(),
+                DashboardAPI.fetchSystemReadiness()
             ]);
 
-            globalData = { complete, analytics, recommendations };
-            renderOverview(complete);
+            globalData = { complete, analytics, recommendations, readiness };
+            renderOverview(complete, readiness);
             renderEmotions(complete);
             renderTasks(complete, analytics);
             renderEngagement(complete);
@@ -359,10 +429,22 @@
             renderInsights(complete, analytics);
         }
 
-        function renderOverview(data) {
+        function renderOverview(data, readinessPayload) {
             if (!data) return;
 
             let html = `
+                <div class="stat-card mb-4">
+                    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+                        <div>
+                            <h5 class="mb-1"><i class="fas fa-display me-2"></i>Main Interface Control Center</h5>
+                            <p class="text-muted mb-0">One place to run your AI workflow professionally while advanced intelligence runs in the background.</p>
+                        </div>
+                        <a href="/hud/" class="btn btn-primary">
+                            <i class="fas fa-rocket me-2"></i>Open HUD Mode
+                        </a>
+                    </div>
+                </div>
+
                 <div class="row mb-4">
                     <div class="col-md-3">
                         <div class="stat-card text-center">
@@ -393,6 +475,62 @@
                         </div>
                     </div>
                 </div>
+
+                <div class="stat-card mb-4" id="system-health-card">
+                    <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
+                        <div>
+                            <h5 class="mb-1"><i class="fas fa-shield-heart me-2"></i>System Health</h5>
+                            <p class="text-muted mb-2" id="system-health-summary">Checking readiness and reliability signals...</p>
+                            <div id="system-health-grade"></div>
+                        </div>
+                        <div>
+                            <span class="stat-number" id="system-health-score">-</span>
+                            <div class="stat-label">Readiness Score</div>
+                        </div>
+                    </div>
+                    <div class="fix-button-row" id="system-health-fixes"></div>
+                    <div class="mt-2" id="system-health-history"></div>
+                </div>
+
+                <h5 class="mb-3"><i class="fas fa-compass me-2"></i>Quick Access</h5>
+                <div class="row g-3 mb-4">
+                    <div class="col-md-4 col-lg-3">
+                        <a class="text-decoration-none" href="/analytics/">
+                            <div class="quick-action-card">
+                                <i class="fas fa-chart-line mb-2"></i>
+                                <h6 class="mb-1">Analytics</h6>
+                                <small class="text-muted">Performance + emotion trends</small>
+                            </div>
+                        </a>
+                    </div>
+                    <div class="col-md-4 col-lg-3">
+                        <a class="text-decoration-none" href="/chat/">
+                            <div class="quick-action-card">
+                                <i class="fas fa-comments mb-2"></i>
+                                <h6 class="mb-1">AI Coach</h6>
+                                <small class="text-muted">Talk to your assistant live</small>
+                            </div>
+                        </a>
+                    </div>
+                    <div class="col-md-4 col-lg-3">
+                        <a class="text-decoration-none" href="/biofeedback/">
+                            <div class="quick-action-card">
+                                <i class="fas fa-heart-pulse mb-2"></i>
+                                <h6 class="mb-1">Biofeedback</h6>
+                                <small class="text-muted">Connect wearables & signals</small>
+                            </div>
+                        </a>
+                    </div>
+                    <div class="col-md-4 col-lg-3">
+                        <a class="text-decoration-none" href="/companion/">
+                            <div class="quick-action-card">
+                                <i class="fas fa-user-astronaut mb-2"></i>
+                                <h6 class="mb-1">Companion Hub</h6>
+                                <small class="text-muted">Persona + intervention center</small>
+                            </div>
+                        </a>
+                    </div>
+                </div>
             `;
 
             // Current emotion
@@ -407,6 +545,63 @@
                 document.getElementById('current-level').textContent = data.engagement.level || 1;
                 document.getElementById('current-streak').textContent = data.engagement.streaks?.current_streak || 0;
                 document.getElementById('current-points').textContent = data.engagement.points || 0;
+            }
+
+
+            const readiness = readinessPayload?.system_readiness;
+            const score = readiness?.score ?? null;
+            const grade = readiness?.grade || 'unknown';
+            const colorClass = score === null ? 'health-yellow' : (score >= 75 ? 'health-green' : (score >= 60 ? 'health-yellow' : 'health-red'));
+            const scoreLabel = score === null ? 'N/A' : score;
+            document.getElementById('system-health-score').textContent = scoreLabel;
+            document.getElementById('system-health-grade').innerHTML = `<span class="health-pill ${colorClass}">${grade.replace('_', ' ').toUpperCase()}</span>`;
+
+            if (readiness) {
+                const alerting = readiness.alerting || {};
+                const streak = alerting.current_low_score_streak || 0;
+                const threshold = alerting.threshold || 60;
+                document.getElementById('system-health-summary').textContent = `Low-score streak: ${streak} day(s). Alert threshold: < ${threshold} for ${alerting.consecutive_days_required || 3} day(s).`;
+
+                const fixButtons = [];
+                (readiness.recommendations || []).slice(0, 3).forEach((recommendation, idx) => {
+                    fixButtons.push(`<button class="btn btn-sm btn-outline-primary" type="button" title="${recommendation}">Fix ${idx + 1}</button>`);
+                });
+                if (readiness.self_heal?.suggested) {
+                    fixButtons.push('<button id="run-self-heal" class="btn btn-sm btn-primary" type="button"><i class="fas fa-wrench me-1"></i>Run Self-Heal</button>');
+                }
+                fixButtons.push('<button id="run-self-improve" class="btn btn-sm btn-outline-success" type="button"><i class="fas fa-brain me-1"></i>Run Self-Improve</button>');
+                if (fixButtons.length === 0) {
+                    fixButtons.push('<span class="text-success"><i class="fas fa-check-circle me-1"></i>No immediate fixes needed.</span>');
+                }
+                document.getElementById('system-health-fixes').innerHTML = fixButtons.join('');
+
+                const history = (readiness.history || []).slice(-7).reverse();
+                if (history.length > 0) {
+                    document.getElementById('system-health-history').innerHTML = '<small class="text-muted">7-day trend: ' + history.map(item => `${item.date}: ${item.score}`).join(' · ') + '</small>';
+                }
+
+                const selfHealButton = document.getElementById('run-self-heal');
+                if (selfHealButton) {
+                    selfHealButton.addEventListener('click', async () => {
+                        selfHealButton.disabled = true;
+                        selfHealButton.textContent = 'Running...';
+                        const result = await DashboardAPI.triggerSelfHeal();
+                        selfHealButton.textContent = result?.status === 'success' ? 'Self-Heal Complete' : 'Self-Heal Failed';
+                    });
+                }
+
+                const selfImproveButton = document.getElementById('run-self-improve');
+                if (selfImproveButton) {
+                    selfImproveButton.addEventListener('click', async () => {
+                        selfImproveButton.disabled = true;
+                        selfImproveButton.textContent = 'Learning...';
+                        const result = await DashboardAPI.triggerSelfImprove();
+                        selfImproveButton.textContent = result?.status === 'success' ? 'Improvement Applied' : 'Self-Improve Failed';
+                    });
+                }
+            } else {
+                document.getElementById('system-health-summary').textContent = 'Readiness API unavailable. Check /companion/api/system/readiness/.';
+                document.getElementById('system-health-fixes').innerHTML = '<button class="btn btn-sm btn-outline-secondary" type="button" disabled>Unable to load fixes</button>';
             }
 
             // Crisis Alert

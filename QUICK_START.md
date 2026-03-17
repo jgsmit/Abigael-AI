@@ -1,6 +1,6 @@
-# QUICK START GUIDE: Using EmoFocus Features
+# QUICK START GUIDE: Using Abigael AI Features
 
-A practical guide for developers integrating EmoFocus capabilities into your Django app.
+A practical guide for developers integrating Abigael AI capabilities into your Django app.
 
 ---
 

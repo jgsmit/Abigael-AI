@@ -1,6 +1,6 @@
 # Frontend Integration Guide
 
-Complete guide for frontend developers to integrate with the EmoFocus AI backend.
+Complete guide for frontend developers to integrate with the Abigael AI AI backend.
 
 ## Overview
 

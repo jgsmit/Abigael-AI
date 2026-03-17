@@ -1,7 +1,7 @@
-# EmoFocus - The Emotion-Aware Productivity Assistant
+# Abigael AI - The Emotion-Aware Productivity Assistant
 
 🧠 **Project Summary**
-EmoFocus is an intelligent productivity system that personalizes your to-do list according to your current emotional state. It recognizes your mood using facial expressions, voice tone, and typing patterns — and adapts which tasks it suggests, when, and how they should be approached.
+Abigael AI is an intelligent productivity system that personalizes your to-do list according to your current emotional state. It recognizes your mood using facial expressions, voice tone, and typing patterns — and adapts which tasks it suggests, when, and how they should be approached.
 
 ## 🚀 **Features Implemented**
 
@@ -326,12 +326,19 @@ The system learns from your behavior patterns:
 - `POST /api/ai-insights/rate/` - Rate AI insight helpfulness
 - Plus 2 more endpoints
 
-**Total**: 20 API endpoints
+
+### **System Reliability APIs (4 endpoints)**
+- `GET /emotion_detection/api/system/memory-health/` - Memory persistence + autonomous learning health score
+- `GET /emotion_detection/api/system/readiness/` - End-to-end AI readiness checks with actionable recommendations
+- `POST /emotion_detection/api/system/self-heal/` - Trigger safe self-healing actions when runtime is idle
+- `POST /emotion_detection/api/system/self-improve/` - Run adaptive learning cycle from recent outcomes and feedback
+
+**Total**: 24 API endpoints
 
 ## 📁 **Project Structure**
 
 ```
-EmoFocus/
+Abigael AI/
 ├── emotion_detection/
 │   ├── cognitive_models.py              # Phase 1: Cognitive state models
 │   ├── cognitive_state_analyzer.py      # Phase 1: Cognitive analysis engine
@@ -471,6 +478,6 @@ For more examples, see `QUICK_START.md`
 
 ---
 
-**EmoFocus** - Where emotional intelligence meets productivity excellence. 🧠✨
+**Abigael AI** - Where emotional intelligence meets productivity excellence. 🧠✨
 
 **Status**: ✅ All 7 phases implemented and production-ready.

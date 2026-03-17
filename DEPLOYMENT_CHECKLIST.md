@@ -1,6 +1,6 @@
 # INTEGRATION & DEPLOYMENT CHECKLIST
 
-Complete checklist for integrating all 7 phases of EmoFocus into your production system.
+Complete checklist for integrating all 7 phases of Abigael AI into your production system.
 
 ---
 

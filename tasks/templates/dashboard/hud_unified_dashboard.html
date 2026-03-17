@@ -457,6 +457,60 @@
                 text-shadow: 0 0 20px var(--hud-primary), 0 0 30px var(--hud-secondary);
             }
         }
+
+        .visualizer-shell {
+            border: 1px solid rgba(0, 255, 136, 0.45);
+            border-radius: 14px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+            background: rgba(2, 10, 20, 0.55);
+        }
+
+        .visualizer-stage {
+            height: 170px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+
+        #voice-visualizer {
+            width: 100%;
+            height: 160px;
+            display: block;
+        }
+
+        .avatar-visual {
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            border: 2px solid var(--hud-secondary);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+            color: var(--hud-secondary);
+            box-shadow: 0 0 20px rgba(0, 212, 255, 0.35);
+            animation: avatar-idle 2.2s ease-in-out infinite;
+        }
+
+        .avatar-visual.speaking {
+            animation: avatar-speak 0.55s ease-in-out infinite;
+            color: var(--hud-primary);
+            border-color: var(--hud-primary);
+            box-shadow: 0 0 26px rgba(0, 255, 136, 0.5);
+        }
+
+        @keyframes avatar-idle {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.03); }
+        }
+
+        @keyframes avatar-speak {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.12); }
+        }
+
     </style>
 </head>
 <body>
@@ -490,6 +544,9 @@
             </button>
             <button class="hud-tab-btn" onclick="switchTab('insights')">
                 <i class="fas fa-lightbulb"></i> Insights
+            </button>
+            <button class="hud-tab-btn" onclick="switchTab('comms')">
+                <i class="fas fa-microphone-alt"></i> AI Comms
             </button>
         </div>
 
@@ -579,6 +636,38 @@
                 <div id="insights-list" class="hud-card-content loading"></div>
             </div>
         </div>
+
+        <!-- AI COMMS TAB -->
+        <div id="comms-content" class="tab-content fade-in" style="display: none;">
+            <div class="hud-card">
+                <div class="hud-card-title">🎙️ Cinematic AI Communication Console</div>
+                <div class="hud-card-content">
+                    <div class="visualizer-shell">
+                        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2">
+                            <small style="opacity:0.9;">Response style</small>
+                            <select id="visualizer-mode" class="form-select form-select-sm" onchange="setVisualizerMode(this.value)" style="max-width: 280px; background:#061223; color:var(--hud-primary); border:1px solid var(--hud-secondary);">
+                                <option value="circular">Live Circular Audio-Wave (Default)</option>
+                                <option value="bars">Spectrum Bars</option>
+                                <option value="avatar">Avatar Pulse</option>
+                            </select>
+                        </div>
+                        <div class="visualizer-stage">
+                            <canvas id="voice-visualizer" width="900" height="160"></canvas>
+                            <div id="avatar-visual" class="avatar-visual"><i class="fas fa-robot"></i></div>
+                        </div>
+                    </div>
+
+                    <div id="comms-log" style="max-height: 300px; overflow-y: auto; margin-bottom: 1rem;"></div>
+                    <div class="d-flex gap-2 flex-wrap">
+                        <input id="comms-input" type="text" class="form-control" placeholder="Talk to Abigael AI..." style="background:#060a1e;color:var(--hud-primary);border:1px solid var(--hud-secondary);" />
+                        <button class="btn btn-sm" style="background:var(--hud-primary);color:#04100b;" onclick="sendCommsMessage()"><i class="fas fa-paper-plane"></i> Send</button>
+                        <button id="voice-btn" class="btn btn-sm" style="background:var(--hud-secondary);color:#04100b;" onclick="toggleVoiceInput()"><i class="fas fa-microphone"></i> Voice</button>
+                        <button class="btn btn-sm" style="background:var(--hud-accent);color:#fff;" onclick="clearCommsLog()"><i class="fas fa-trash"></i> Clear</button>
+                    </div>
+                    <small class="d-block mt-2" style="opacity:0.8;">Pick visual style: circular wave, bars, or avatar pulse.</small>
+                </div>
+            </div>
+        </div>
     </div>
 
     <script>
@@ -586,10 +675,10 @@
         class HUDDashboardAPI {
             static async fetchUserComplete() {
                 try {
-                    const response = await fetch('/emotion_detection/api/user/complete/');
+                    const response = await fetch('/companion/api/user/complete/');
                     if (response.ok) {
                         const data = await response.json();
-                        return data.status === 'success' ? data.data : null;
+                        return data.status === 'success' ? (data.data || data) : null;
                     }
                 } catch (error) {
                     console.error('Error fetching user complete:', error);
@@ -599,10 +688,10 @@
 
             static async fetchTasksAnalytics() {
                 try {
-                    const response = await fetch('/tasks/api/tasks/analytics/');
+                    const response = await fetch('/api/tasks/analytics/');
                     if (response.ok) {
                         const data = await response.json();
-                        return data.status === 'success' ? data.data : null;
+                        return data.status === 'success' ? (data.data || data) : null;
                     }
                 } catch (error) {
                     console.error('Error fetching analytics:', error);
@@ -612,10 +701,10 @@
 
             static async fetchTaskRecommendations() {
                 try {
-                    const response = await fetch('/tasks/api/tasks/recommendations/');
+                    const response = await fetch('/api/tasks/recommendations/');
                     if (response.ok) {
                         const data = await response.json();
-                        return data.status === 'success' ? data.data : null;
+                        return data.status === 'success' ? (data.data || data) : null;
                     }
                 } catch (error) {
                     console.error('Error fetching recommendations:', error);
@@ -625,11 +714,11 @@
 
             static async fetchAllTasks(status = null) {
                 try {
-                    const url = status ? `/tasks/api/tasks/?status=${status}` : '/tasks/api/tasks/?limit=100';
+                    const url = status ? `/api/tasks/?status=${status}` : '/api/tasks/';
                     const response = await fetch(url);
                     if (response.ok) {
                         const data = await response.json();
-                        return data.status === 'success' ? data.data : [];
+                        return data.status === 'success' ? (data.tasks || []) : [];
                     }
                 } catch (error) {
                     console.error('Error fetching tasks:', error);
@@ -648,16 +737,17 @@
         function switchTab(tabName) {
             // Hide all content
             document.querySelectorAll('.tab-content').forEach(el => el.style.display = 'none');
-            
+
             // Remove active class from all buttons
             document.querySelectorAll('.hud-tab-btn').forEach(btn => btn.classList.remove('active'));
-            
+
             // Show selected content
             document.getElementById(tabName + '-content').style.display = 'block';
-            
-            // Add active class to clicked button
-            event.target.closest('.hud-tab-btn').classList.add('active');
-            
+
+            // Add active class to matching button
+            const activeButton = document.querySelector(`.hud-tab-btn[onclick="switchTab('${tabName}')"]`);
+            if (activeButton) activeButton.classList.add('active');
+
             // Load data for tab
             loadTabData(tabName);
         }
@@ -688,6 +778,9 @@
                 case 'insights':
                     await loadInsightsData();
                     break;
+                case 'comms':
+                    initializeComms();
+                    break;
             }
         }
 
@@ -707,7 +800,7 @@
                 const overview = analytics.overview;
                 document.getElementById('total-tasks').textContent = overview.total_tasks;
                 document.getElementById('pending-tasks').textContent = overview.pending_tasks;
-                document.getElementById('completion-rate').textContent = Math.round(overview.completion_rate) + '%';
+                document.getElementById('completion-rate').textContent = Math.round(overview.overall_completion_rate || 0) + '%';
                 
                 gsap.from('.stat-number', { duration: 1, opacity: 0, y: 20, stagger: 0.1 });
             }
@@ -730,9 +823,10 @@
         async function loadEmotionsData() {
             const userData = await HUDDashboardAPI.fetchUserComplete();
 
-            if (userData?.emotions?.history) {
-                const history = userData.emotions.history.slice(0, 10);
-                const html = history.map(e => `
+            const history = userData?.emotion_trends?.last_24_hours?.emotions || [];
+            if (history.length) {
+                const rows = history.slice(0, 10);
+                const html = rows.map(e => `
                     <div class="task-item fade-in">
                         <div class="task-title">${getEmotionEmoji(e.emotion)} ${e.emotion.toUpperCase()}</div>
                         <div class="task-meta">${new Date(e.timestamp).toLocaleString()}</div>
@@ -769,7 +863,7 @@
             if (userData?.engagement) {
                 const engagement = userData.engagement;
                 document.getElementById('engagement-level').textContent = engagement.level || 0;
-                document.getElementById('engagement-streak').textContent = engagement.streak || 0;
+                document.getElementById('engagement-streak').textContent = engagement.streaks?.current_streak || 0;
                 document.getElementById('engagement-points').textContent = (engagement.points || 0).toLocaleString();
                 
                 const achievements = engagement.achievements || [];
@@ -788,13 +882,13 @@
 
             if (userData?.mental_health) {
                 const health = userData.mental_health;
-                const status = health.crisis_detected ? '🚨 CRISIS DETECTED' : health.burnout_risk ? '⚠️ BURNOUT RISK' : '✅ HEALTHY';
+                const risk = health.burnout_risk || {};
+                const status = risk.risk_level ? `⚠️ BURNOUT RISK (${String(risk.risk_level).toUpperCase()})` : '✅ HEALTHY';
                 const html = `
                     <div class="fade-in">
                         <p><strong>Status:</strong> ${status}</p>
-                        ${health.crisis_detected ? '<p style="color: var(--hud-accent);">Crisis support resources available. Please reach out.</p>' : ''}
-                        ${health.burnout_risk ? '<p style="color: var(--hud-secondary);">Consider taking breaks and pacing yourself.</p>' : ''}
-                        <p><strong>Last Assessment:</strong> ${health.last_assessment || 'N/A'}</p>
+                        ${risk.risk_score ? `<p style="color: var(--hud-secondary);">Current burnout score: ${risk.risk_score}/10</p>` : ''}
+                        <p><strong>Last Assessment:</strong> ${risk.timestamp || 'N/A'}</p>
                     </div>
                 `;
                 document.getElementById('health-status').innerHTML = html;
@@ -816,10 +910,261 @@
             }
         }
 
+
+        // ==================== AI COMMS (CHAT + VOICE) ====================
+        let commsInitialized = false;
+        let speechRecognition = null;
+        let mediaStream = null;
+        let audioContext = null;
+        let analyser = null;
+        let animationId = null;
+        let isListening = false;
+        let aiSpeaking = false;
+        let visualizerMode = 'circular';
+
+        function appendCommsMessage(sender, text) {
+            const log = document.getElementById('comms-log');
+            if (!log) return;
+            const roleColor = sender === 'AI' ? 'var(--hud-secondary)' : 'var(--hud-primary)';
+            const row = document.createElement('div');
+            row.className = 'task-item fade-in';
+            row.innerHTML = `<div class="task-title" style="color:${roleColor}">${sender}</div><div class="task-meta">${new Date().toLocaleTimeString()}</div><div style="margin-top:0.35rem">${text}</div>`;
+            log.appendChild(row);
+            log.scrollTop = log.scrollHeight;
+        }
+
+        function getCookie(name) {
+            const value = `; ${document.cookie}`;
+            const parts = value.split(`; ${name}=`);
+            if (parts.length === 2) return parts.pop().split(';').shift();
+            return '';
+        }
+
+        function setVisualizerMode(mode) {
+            visualizerMode = mode || 'circular';
+            const canvas = document.getElementById('voice-visualizer');
+            const avatar = document.getElementById('avatar-visual');
+            if (!canvas || !avatar) return;
+
+            if (visualizerMode === 'avatar') {
+                canvas.style.display = 'none';
+                avatar.style.display = 'flex';
+            } else {
+                canvas.style.display = 'block';
+                avatar.style.display = 'none';
+            }
+        }
+
+        function drawCircularWave(ctx, width, height, amplitudes) {
+            const cx = width / 2;
+            const cy = height / 2;
+            const baseR = 36;
+            const points = 90;
+            ctx.beginPath();
+            for (let i = 0; i <= points; i++) {
+                const theta = (i / points) * Math.PI * 2;
+                const bin = Math.floor((i / points) * amplitudes.length);
+                const mag = (amplitudes[bin] || 0) / 255;
+                const radius = baseR + mag * 40;
+                const x = cx + Math.cos(theta) * radius;
+                const y = cy + Math.sin(theta) * radius;
+                if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+            }
+            ctx.closePath();
+            ctx.strokeStyle = '#00ff88';
+            ctx.lineWidth = 2;
+            ctx.shadowBlur = 16;
+            ctx.shadowColor = '#00ff88';
+            ctx.stroke();
+        }
+
+        function drawBars(ctx, width, height, amplitudes) {
+            const bars = 48;
+            const bw = width / bars;
+            for (let i = 0; i < bars; i++) {
+                const v = (amplitudes[i] || 0) / 255;
+                const h = Math.max(8, v * (height - 20));
+                const x = i * bw + 1;
+                const y = height - h;
+                ctx.fillStyle = i % 2 ? '#00d4ff' : '#00ff88';
+                ctx.fillRect(x, y, bw - 2, h);
+            }
+        }
+
+        function startVisualizerLoop() {
+            const canvas = document.getElementById('voice-visualizer');
+            const avatar = document.getElementById('avatar-visual');
+            if (!canvas) return;
+            const ctx = canvas.getContext('2d');
+            const width = canvas.width;
+            const height = canvas.height;
+
+            const render = () => {
+                ctx.clearRect(0, 0, width, height);
+                const bg = ctx.createLinearGradient(0, 0, width, height);
+                bg.addColorStop(0, 'rgba(0,255,136,0.04)');
+                bg.addColorStop(1, 'rgba(0,212,255,0.04)');
+                ctx.fillStyle = bg;
+                ctx.fillRect(0, 0, width, height);
+
+                let data = new Uint8Array(128);
+                if (analyser && isListening) {
+                    data = new Uint8Array(analyser.frequencyBinCount);
+                    analyser.getByteFrequencyData(data);
+                } else if (aiSpeaking) {
+                    data = Uint8Array.from({length: 128}, () => Math.floor(Math.random() * 180 + 40));
+                } else {
+                    data = Uint8Array.from({length: 128}, (_, i) => Math.floor(20 + 10 * Math.sin(Date.now()/300 + i/5)));
+                }
+
+                if (visualizerMode === 'bars') {
+                    drawBars(ctx, width, height, data);
+                } else if (visualizerMode === 'circular') {
+                    drawCircularWave(ctx, width, height, data);
+                }
+
+                if (avatar) avatar.classList.toggle('speaking', aiSpeaking || isListening);
+                animationId = requestAnimationFrame(render);
+            };
+
+            if (animationId) cancelAnimationFrame(animationId);
+            render();
+        }
+
+        async function prepareMicrophoneAnalyzer() {
+            if (analyser) return true;
+            try {
+                mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                const source = audioContext.createMediaStreamSource(mediaStream);
+                analyser = audioContext.createAnalyser();
+                analyser.fftSize = 256;
+                source.connect(analyser);
+                return true;
+            } catch (error) {
+                appendCommsMessage('AI', 'Microphone access denied. Voice capture unavailable.');
+                return false;
+            }
+        }
+
+        function speakIfAvailable(text) {
+            if (!('speechSynthesis' in window) || !text) return;
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.rate = 1;
+            utterance.pitch = 1;
+            utterance.onstart = () => { aiSpeaking = true; };
+            utterance.onend = () => { aiSpeaking = false; };
+            window.speechSynthesis.speak(utterance);
+        }
+
+        async function sendCommsMessage() {
+            const input = document.getElementById('comms-input');
+            const message = (input?.value || '').trim();
+            if (!message) return;
+
+            appendCommsMessage('YOU', message);
+            input.value = '';
+
+            const emotion = document.getElementById('emotion-display')?.textContent || 'neutral';
+            try {
+                const formData = new FormData();
+                formData.append('message', message);
+                formData.append('current_emotion', emotion.toLowerCase());
+
+                const response = await fetch('/chat/', {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'X-CSRFToken': getCookie('csrftoken')
+                    }
+                });
+
+                const data = await response.json();
+                const aiText = data.response || data.message || 'I received your message. Let us continue.';
+                appendCommsMessage('AI', aiText);
+                speakIfAvailable(aiText);
+            } catch (error) {
+                appendCommsMessage('AI', 'Connection issue. Please try again.');
+            }
+        }
+
+        async function toggleVoiceInput() {
+            const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            if (!Recognition) {
+                appendCommsMessage('AI', 'Voice input is not supported in this browser.');
+                return;
+            }
+
+            if (!speechRecognition) {
+                speechRecognition = new Recognition();
+                speechRecognition.lang = 'en-US';
+                speechRecognition.interimResults = false;
+                speechRecognition.maxAlternatives = 1;
+                speechRecognition.onresult = (event) => {
+                    const transcript = event.results[0][0].transcript;
+                    const input = document.getElementById('comms-input');
+                    if (input) input.value = transcript;
+                    sendCommsMessage();
+                };
+                speechRecognition.onerror = () => {
+                    isListening = false;
+                    const btn = document.getElementById('voice-btn');
+                    if (btn) btn.innerHTML = '<i class="fas fa-microphone"></i> Voice';
+                    appendCommsMessage('AI', 'Could not capture voice. Please retry.');
+                };
+                speechRecognition.onend = () => {
+                    isListening = false;
+                    const btn = document.getElementById('voice-btn');
+                    if (btn) btn.innerHTML = '<i class="fas fa-microphone"></i> Voice';
+                };
+            }
+
+            if (isListening) {
+                speechRecognition.stop();
+                isListening = false;
+                const btn = document.getElementById('voice-btn');
+                if (btn) btn.innerHTML = '<i class="fas fa-microphone"></i> Voice';
+                return;
+            }
+
+            const micReady = await prepareMicrophoneAnalyzer();
+            if (!micReady) return;
+
+            isListening = true;
+            const btn = document.getElementById('voice-btn');
+            if (btn) btn.innerHTML = '<i class="fas fa-stop"></i> Stop';
+            speechRecognition.start();
+            appendCommsMessage('AI', 'Listening... speak now.');
+        }
+
+        function initializeComms() {
+            if (commsInitialized) return;
+            commsInitialized = true;
+
+            setVisualizerMode('circular');
+            startVisualizerLoop();
+            appendCommsMessage('AI', 'HUD communication console online. Default mode: Live Circular Audio-Wave.');
+
+            const input = document.getElementById('comms-input');
+            if (input) {
+                input.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter') sendCommsMessage();
+                });
+            }
+        }
+
+        function clearCommsLog() {
+            const log = document.getElementById('comms-log');
+            if (log) log.innerHTML = '';
+            appendCommsMessage('AI', 'Log cleared. Ready for next command.');
+        }
+
         // ==================== INITIALIZATION ====================
 
         async function initializeDashboard() {
             await loadOverviewData();
+            initializeComms();
             
             // Add GSAP animations to new elements
             gsap.from('.hud-card', {

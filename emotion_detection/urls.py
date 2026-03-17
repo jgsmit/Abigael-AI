@@ -110,4 +110,8 @@ urlpatterns = [
     path('api/user/companion/', api_views.user_companion_data, name='api_user_companion'),
     path('api/user/mental-health/', api_views.user_mental_health_data, name='api_user_mental_health'),
     path('api/user/complete/', api_views.user_complete_profile, name='api_user_complete'),
+    path('api/system/memory-health/', api_views.system_memory_health, name='api_system_memory_health'),
+    path('api/system/readiness/', api_views.system_readiness_report, name='api_system_readiness'),
+    path('api/system/self-heal/', api_views.system_self_heal, name='api_system_self_heal'),
+    path('api/system/self-improve/', api_views.system_self_improve, name='api_system_self_improve'),
 ]

@@ -112,9 +112,9 @@ def reward_shop(request):
     
     # Get available rewards
     rewards = RewardOption.objects.filter(
-        is_active=True,
         Q(available_from__isnull=True) | Q(available_from__lte=now),
         Q(available_until__isnull=True) | Q(available_until__gte=now),
+        is_active=True,
     ).order_by('cost_points')
     
     # Filter by category if provided

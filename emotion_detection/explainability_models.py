@@ -375,12 +375,7 @@ class ConfidenceScore(models.Model):
     # Why we're confident (or not)
     factors = models.JSONField(
         default=dict,
-        help_text='{
-            "data_recency": 0.9,
-            "sample_size": 0.7,
-            "historical_consistency": 0.8,
-            "personalization": 0.6
-        }'
+        help_text='JSON object with confidence factors (e.g. {"data_recency": 0.9, "sample_size": 0.7})'
     )
     
     # Explanation
